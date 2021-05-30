@@ -40,20 +40,27 @@ let mappings = {
  * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
  */
 function computeBoundingBox(dataPoints) {
-    // [[min,max],[min,max],[min,max]]
-    const res = [[Infinity, -Infinity], [Infinity, -Infinity], [Infinity, -Infinity]];
+    // Initialize a bounding box that contains nothing:
+    const minMaxX = [Infinity, -Infinity];
+    const minMaxY = [Infinity, -Infinity];
+    const minMaxZ = [Infinity, -Infinity];
+
+    // Loop through all the points and compute their
+    // minimum and maximum extents on every axis:
     for (let i = 0; i < dataPoints.length; i++) {
         const pt = dataPoints[i];
-        res[0][0] = Math.min(res[0][0], pt[0]);
-        res[0][1] = Math.max(res[0][1], pt[0]);
+        // Only allow the point to modify the extents if it is
+        // not alreay encompassed in the bounds
+        minMaxX[0] = Math.min(minMaxX[0], pt[0]);
+        minMaxX[1] = Math.max(minMaxX[1], pt[0]);
 
-        res[1][0] = Math.min(res[1][0], pt[1]);
-        res[1][1] = Math.max(res[1][1], pt[1]);
+        minMaxY[0] = Math.min(minMaxY[0], pt[1]);
+        minMaxY[1] = Math.max(minMaxY[1], pt[1]);
 
-        res[2][0] = Math.min(res[2][0], pt[2]);
-        res[2][1] = Math.max(res[2][1], pt[2]);
+        minMaxZ[0] = Math.min(minMaxZ[0], pt[2]);
+        minMaxZ[1] = Math.max(minMaxZ[1], pt[2]);
     }
-    return res;
+    return [minMaxX, minMaxY, minMaxZ];
 }
 
 /**
@@ -110,18 +117,19 @@ function mapPointsToNormalizedCoords(dataPoints) {
 
     let maxBoundValue = -Infinity;
     for (let i = 0; i < bounds.length; i++) {
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(bounds[i][0]));
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(bounds[i][1]));
+        const axisMinMax = bounds[i];
+        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[0]));
+        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[1]));
     }
     const scaleFactor = 1 / maxBoundValue;
 
-    const res = [];
+    const normalizedPoints = [];
     for (let i = 0; i < dataPoints.length; i++) {
         const pt = dataPoints[i];
         const scaledPt = [pt[0] * scaleFactor, pt[1] * scaleFactor, pt[1] * scaleFactor];
-        res.push(scaledPt);
+        normalizedPoints.push(scaledPt);
     }
-    return res;
+    return normalizedPoints;
 }
 
 fetch(`http://${window.location.host}/mappings/mapping.json`).then(async (value) => {
@@ -132,6 +140,12 @@ fetch(`http://${window.location.host}/mappings/mapping.json`).then(async (value)
     state.data = new Uint8Array(data.length * 3); // 3 bytes per LED, for colors
 });
 
+/**
+ * Auto-resize the canvas to have the same number of pixels as the actual screen.
+ * Set the canvas transformation matrix to initialize the canvas
+ * coordinate space.
+ * @param {CanvasRenderingContext2D} ctx
+ */
 function autoResize(ctx) {
     const canvas = ctx.canvas;
     const desWidth = canvas.clientWidth * devicePixelRatio;
@@ -140,6 +154,8 @@ function autoResize(ctx) {
         canvas.width = desWidth;
         canvas.height = desHeight;
     }
+    //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
+    //
     ctx.setTransform(0.5, 0, 0, -0.5, canvas.width * 0.5, canvas.height * 0.5);
 }
 
@@ -268,22 +284,22 @@ function loop(elapsedMs) {
     fill('#ff00ffff');
     rect(left, bottom, width, height);
 
-    // Crosshairs
+    // Origin Crosshairs
     stroke('#000000bb');
     line(left, 0, right, 0);
     line(0, bottom, 0, top);
 
-    const mapping = mappings.normalized;
+    const normMapping = mappings.normalized;
 
     state.lineX += 0.001;
     if (state.lineX > 1) {
         state.lineX = 0;
     }
     let lineXNorm = state.lineX;
-    let lineXCanvas = state.lineX * halfWidth;
+    let lineXCanvas = lineXNorm * halfWidth;
 
-    for (let i = 0; i < mapping.length; i++) {
-        const pt = mapping[i];
+    for (let i = 0; i < normMapping.length; i++) {
+        const pt = normMapping[i];
         const canvasPt = [pt[0] * halfWidth, pt[1] * halfHeight];
 
         // let x = (elapsedMs % 5000) / 5000 * right;
@@ -298,7 +314,9 @@ function loop(elapsedMs) {
         //     state.data[i * 3 + 0] = 0;
         // }
 
-        if (Math.abs(pt[0] - lineXNorm) < 0.3) {
+        let distToVerticalLine = Math.abs(pt[0] - lineXNorm);
+
+        if (distToVerticalLine < 0.3) {
             state.data[i * 3 + 0] = 255;
         } else {
             state.data[i * 3 + 0] = 0;
@@ -323,8 +341,8 @@ function loop(elapsedMs) {
         state.data[i * 3 + 2] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
     }
 
-    for (let i = 0; i < mapping.length; i++) {
-        const pt = mapping[i];
+    for (let i = 0; i < normMapping.length; i++) {
+        const pt = normMapping[i];
 
         // Calculate the color of the current pixel:
         const color = 0xFF | state.data[i * 3 + 2] << 8 | state.data[i * 3 + 1] << 16 | state.data[i * 3 + 0] << 24;

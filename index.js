@@ -75,7 +75,7 @@ async function scanForDevices() {
             const data = await SerialPort.list();
             let info = null;
             for (let i = 0; i < data.length; i++) {
-                if (data[i].vendorId === '2341') {
+                if (data[i].vendorId === '16C0') {
                     // Found a device with an Arduino vendor ID
                     info = data[i];
                     break;
