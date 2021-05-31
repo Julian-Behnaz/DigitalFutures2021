@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "microcontroller"
+		},
+		{
+			"path": "server"
+		},
+		{
+			"path": "Mapping"
+		}
+	],
+	"settings": {}
+}

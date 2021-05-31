@@ -1,0 +1,28 @@
+{
+  "name": "digitalfutures2021",
+  "version": "1.0.0",
+  "description": "Beyond the Grid: Interactive Installations with Wacky Topologies",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Julian-Behnaz/DigitalFutures2021.git"
+  },
+  "keywords": [
+    "Interactive",
+    "Installations"
+  ],
+  "author": "Julian Ceipek and Behnaz Farahi",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Julian-Behnaz/DigitalFutures2021/issues"
+  },
+  "homepage": "https://github.com/Julian-Behnaz/DigitalFutures2021#readme",
+  "dependencies": {
+    "serialport": "^9.0.7",
+    "ws": "^7.4.5"
+  }
+}

@@ -10,3 +10,6 @@ Next session
 4. sending data to arduino 
 5. having live update without refreshing the browser
 6. coordinate systems 
+7. UI for different animations 
+8. Text rendering
+9.  
