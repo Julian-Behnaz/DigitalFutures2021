@@ -19,8 +19,11 @@ let deviceState = {
 };
 let prevDeviceStatus = null;
 let websockets = {
+    /** @type {?WebSocket} */
     data: null,
+    /** @type {?WebSocket} */
     status: null,
+    /** @type {?WebSocket} */
     update: null,
 };
 
@@ -109,16 +112,19 @@ async function scanForDevices() {
     }
 }
 
-// let fsWait = false;
-// fs.watch(buttonPressesLogFile, (event, filename) => {
-//   if (filename) {
-//     if (fsWait) return;
-//     fsWait = setTimeout(() => {
-//       fsWait = false;
-//     }, 100);
-//     console.log(`${filename} file Changed`);
-//   }
-// });
+let fsWait = false;
+fs.watch('./front', (event, filename) => {
+  if (filename) {
+    if (fsWait) return;
+    fsWait = setTimeout(() => {
+      fsWait = false;
+    }, 100);
+    console.log(`${filename} file Changed`);
+    if (websockets.update) {
+        websockets.update.send(JSON.stringify({changed: filename}));
+    }
+  }
+});
 
 const server = http.createServer(function (req, res) {
     const uri = new URL(req.url, `http://localhost:${SERVER_PORT}/`);
@@ -202,9 +208,8 @@ updateServer.on('connection', function connection(ws) {
         websockets.update.close();
     }
     websockets.update = ws;
-
-    ws.send(JSON.stringify(deviceState));
 });
+
 
 server.on('upgrade', function upgrade(request, socket, head) {
     const uri = new URL(request.url, `http://localhost:${SERVER_PORT}/`);

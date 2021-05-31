@@ -477,6 +477,12 @@ dataWs.onmessage = (evt) => {
     console.log('MSG', evt);
 };
 
+const updateWs = new WebSocket(`ws://${window.location.host}/update`);
+updateWs.onmessage = (evt) => {
+    console.log('MSG', evt);
+    location.reload();
+};
+
 /**
  * @typedef State
  * Mutable state that may be mutated by each animation tick.
@@ -544,6 +550,13 @@ function tick(elapsedMs, mappings, state) {
 
     // Background
     clear('#ff00ffff');
+
+    fill('#000000ff');
+    if (dataWs.readyState === WebSocket.OPEN) {
+        text(`Connected to Server`, -1, 0.9);
+    } else {
+        text(`Not Connected to Server`, -1, 0.9);
+    }
 
     // Origin Crosshairs
     stroke('#000000bb');
