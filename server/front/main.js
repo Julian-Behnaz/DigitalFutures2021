@@ -1,38 +1,4 @@
-console.log('Hello!');
-
-let isReadyToSend = false;
-
-const statusWs = new WebSocket(`ws://${window.location.host}/status`);
-statusWs.onopen = (evt) => {
-    console.log('OPEN');
-};
-statusWs.onmessage = (evt) => {
-    console.log('MSG', evt);
-};
-
-const dataWs = new WebSocket(`ws://${window.location.host}/data`);
-dataWs.onopen = (evt) => {
-    console.log('OPEN');
-    isReadyToSend = true;
-};
-dataWs.onclose = (evt) => {
-    console.log('CLOSED');
-    isReadyToSend = false;
-};
-dataWs.onmessage = (evt) => {
-    console.log('MSG', evt);
-};
-
-let state = {
-    data: new Uint8Array(0),
-    lineX: 0,
-    animState: 0
-};
-
-let mappings = {
-    physical: [],
-    normalized: []
-}
+'use strict';
 
 /**
  * Computes the bounding box of a set of points, returning a 3d array where each element
@@ -133,13 +99,13 @@ function mapPointsToNormalizedCoords(dataPoints) {
     return normalizedPoints;
 }
 
-fetch(`http://${window.location.host}/mappings/mapping.json`).then(async (value) => {
-    const data = await value.json();
-    mappings.physical = data;
-    mappings.normalized = mapPointsToNormalizedCoords(data);
-
-    state.data = new Uint8Array(data.length * 3); // 3 bytes per LED, for colors
-});
+const DIMS = {
+    aspect: 1,
+    scaleX: 1,
+    scaleY: 1,
+    translateX: 0,
+    translateY: 0,
+};
 
 /**
  * Auto-resize the canvas to have the same number of pixels as the actual screen.
@@ -155,25 +121,14 @@ function autoResize(ctx) {
         canvas.width = desWidth;
         canvas.height = desHeight;
     }
+    DIMS.aspect = desHeight / desWidth;
+    DIMS.scaleX = desWidth / 2 * DIMS.aspect;
+    DIMS.scaleY = -desHeight / 2;
+    DIMS.translateX = desWidth / 2;
+    DIMS.translateY = desHeight / 2;
     //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
-    //
-    const aspect = desHeight / desWidth;
-
-    const scaleX = desWidth / 2 * aspect;
-    const scaleY = -desHeight / 2;
-    const translateX = desWidth / 2;
-    const translateY = desHeight / 2;
-    ctx.setTransform(scaleX, 0, 0, scaleY, translateX, translateY);
+    ctx.setTransform(DIMS.scaleX, 0, 0, DIMS.scaleY, DIMS.translateX, DIMS.translateY);
 }
-
-/** @type HTMLCanvasElement */
-const canvas = document.getElementById('visualization');
-/** @type CanvasRenderingContext2D */
-const ctx = canvas.getContext('2d');
-autoResize(ctx);
-
-
-const TAU = Math.PI * 2;
 
 /**
  * Draw a line with the current stroke color
@@ -220,20 +175,20 @@ function ellipse(x, y, r1, r2) {
 
 /**
  * Set the fill color
- * @param {string} color
+ * @param {string|number} color Fill color as a string or an RGBA integer (u32)
  * @returns {void}
  */
 function fill(color) {
-    ctx.fillStyle = color;
+    ctx.fillStyle = canvasColorFromNumberOrString(color);
 }
 
 /**
  * Set the stroke color
- * @param {string} color
+ * @param {string|number} color Stroke color as a string or an RGBA integer (u32)
  * @returns {void}
  */
 function stroke(color) {
-    ctx.strokeStyle = color;
+    ctx.strokeStyle = canvasColorFromNumberOrString(color);
 }
 
 /**
@@ -252,6 +207,40 @@ function strokeWeight(weight) {
  */
 function rect(x, y, width, height) {
     ctx.fillRect(x, y, width, height);
+}
+
+/**
+ * Given an integer (u32) representing an RGBA color,
+ * returns a canvas-compatible color string.
+ * @param {number} rgba 
+ * @returns {string}
+ */
+function canvasColorFromNumber(rgba) {
+    return `#${(rgba >>> 0).toString(16).padStart(8, '0')}`;
+}
+
+/**
+ * @param {string|number} color Color as a string or an RGBA integer (u32)
+ * @returns {string} Color as a canvas string
+ */
+function canvasColorFromNumberOrString(color) {
+    if (typeof(color) === 'string') {
+        return color;
+    } else if (typeof(color) === 'number') {
+        return canvasColorFromNumber(color);
+    }
+}
+
+/**
+ * Clear the full canvas with the given color.
+ * @param {string} color 
+ * @returns {void}
+ */
+function clear(color) {
+    const prevColor = ctx.fillStyle;
+    ctx.fillStyle = canvasColorFromNumberOrString(color);
+    rect(-DIMS.scaleX * 0.5, -DIMS.scaleY * 0.5, DIMS.scaleX, DIMS.scaleY);
+    ctx.fillStyle = prevColor;
 }
 
 /**
@@ -288,6 +277,7 @@ function sqrDist(x1, y1, x2, y2) {
 /**
  * Set the text size in screen pixels.
  * @param {number} size
+ * @returns {void}
  */
 function textSize(size) {
     ctx.font = `${size}px sans-serif`;
@@ -299,22 +289,17 @@ function textSize(size) {
  * @param {string} text
  * @param {number} x
  * @param {number} y
+ * @returns {void}
  */
 function text(text, x, y) {
     const canvas = ctx.canvas;
-    const desWidth = canvas.width;
-    const desHeight = canvas.height;
+    const width = canvas.width;
+    const height = canvas.height;
 
-    const aspect = desHeight / desWidth;
     const scale = 1;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-    ctx.fillText(text, desWidth * (x * 0.5 * aspect + 0.5), desHeight * (0.5 - y * 0.5));
-
-    const scaleX = desWidth / 2 * aspect;
-    const scaleY = -desHeight / 2;
-    const translateX = desWidth / 2;
-    const translateY = desHeight / 2;
-    ctx.setTransform(scaleX, 0, 0, scaleY, translateX, translateY);
+    ctx.fillText(text, width * (x * 0.5 * DIMS.aspect + 0.5), height * (0.5 - y * 0.5));
+    ctx.setTransform(DIMS.scaleX, 0, 0, DIMS.scaleY, DIMS.translateX, DIMS.translateY);
 }
 
 /**
@@ -324,62 +309,87 @@ function text(text, x, y) {
  * @param {string} text
  */
 function measureTextDims(text) {
-    const canvas = ctx.canvas;
-    const desWidth = canvas.width;
-    const desHeight = canvas.height;
-
     const scale = 1;
     ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
-    const aspect = desHeight / desWidth;
-    const scaleX = desWidth / 2 * aspect;
-    const scaleY = -desHeight / 2;
-    const translateX = desWidth / 2;
-    const translateY = desHeight / 2;
-
     const measurements = ctx.measureText(text);
-    const textWidth = measurements.width / scaleX;
-    const textHeight = (measurements.actualBoundingBoxAscent - measurements.actualBoundingBoxDescent) / -scaleY;
+    const textWidth = measurements.width / DIMS.scaleX;
+    const textHeight = (measurements.actualBoundingBoxAscent - measurements.actualBoundingBoxDescent) / -DIMS.scaleY;
 
-    ctx.setTransform(scaleX, 0, 0, scaleY, translateX, translateY);
+    ctx.setTransform(DIMS.scaleX, 0, 0, DIMS.scaleY, DIMS.translateX, DIMS.translateY);
     return [textWidth, textHeight];
 }
 
 class UserInterface {
+    /** @type {[x: number, y: number]} Position of the mouse in normalized coordinates. */
     mousePosition = [0, 0];
+    /** @type {boolean} Was the mouse clicked this frame? */
     mouseClicked = false;
+
+    COLOR_IDLE = 'black'
+    COLOR_HOVERED = 'green'
+    COLOR_ACTIVE = 'yellow'
+    COLOR_TEXT_IDLE = 'white'
+    COLOR_TEXT_HOVERED = 'black'
 
     /**
      * @param {CanvasRenderingContext2D} ctx
      */
     constructor(ctx) {
         const canvas = ctx.canvas;
-        window.addEventListener('mousemove', this._onMouseMove.bind(this));
-        window.addEventListener('click', this._onMouseClick.bind(this));
+
+        /**
+         * @param {MouseEvent} mouseEvent 
+         */
+        const _onMouseMove = (mouseEvent) => {
+            const width = canvas.clientWidth;
+            const height = canvas.clientHeight;
+            const aspect = height / width;
+            const scaleX = width / 2 * aspect;
+            const scaleY = -height / 2;
+            const translateX = width / 2;
+            const translateY = height / 2;
+            this.mousePosition[0] = (mouseEvent.clientX - translateX) / scaleX;
+            this.mousePosition[1] = (mouseEvent.clientY - translateY) / scaleY;
+        }
+
+        /**
+         * @param {MouseEvent} mouseEvent 
+         */
+        const _onMouseClick = (mouseEvent) => {
+            this.mouseClicked = true;
+        }
+
+        window.addEventListener('mousemove', _onMouseMove);
+        window.addEventListener('click', _onMouseClick);
+
+        this._removeListeners = () => {
+            window.removeEventListener('mousemove', _onMouseMove);
+            window.removeEventListener('click', _onMouseClick);
+        }
     }
 
-    _onMouseMove = (mouseEvent) => {
-        const desWidth = canvas.width;
-        const desHeight = canvas.height;
-        const aspect = desHeight / desWidth;
-        const scaleX = desWidth / 2 * aspect;
-        const scaleY = -desHeight / 2;
-        const translateX = desWidth / 2;
-        const translateY = desHeight / 2;
-        this.mousePosition[0] = (mouseEvent.clientX - translateX) / scaleX;
-        this.mousePosition[1] = (mouseEvent.clientY - translateY) / scaleY;
-    }
-
-    _onMouseClick = (mouseEvent) => {
-        this.mouseClicked = true;
-    }
-
+    /**
+     * Is the mouse hovering over the given rectangle?
+     * @param {number} x Left normalized coordinate of the rect
+     * @param {number} y Bottom normalized coordinate of the rect
+     * @param {number} width Width of the rect in normalized coordinates
+     * @param {number} height Height of the rect in normalized coordinates
+     * @returns True if the mouse is over the rectangle.
+     */
     isHoveringRect(x, y, width, height) {
         const pos = this.mousePosition;
         return pos[0] > x && pos[0] < x + width
             && pos[1] > y && pos[1] < y + height;
     }
 
+    /** 
+     * Draws an interactive button.
+     * @param {string} label Text to display on the button
+     * @param {number} x Normalized left coordinate of the button
+     * @param {number} y Normalized bottom coordinate of the button
+     * @returns {boolean} True if the button was clicked this frame
+     */
     button(label, x, y) {
         textSize(20);
         const labelDims = measureTextDims(label);
@@ -387,20 +397,25 @@ class UserInterface {
         const width = labelDims[0] + padding * 2;
         const height = labelDims[1] + padding * 2;
 
-        let wentDown = false;
-        if (this.isHoveringRect(x, y, width, height)) {
-            fill('green');
-            wentDown = this.mouseClicked;
-        } else {
-            fill('black');
-        }
+        const isHovered = this.isHoveringRect(x, y, width, height);
+        const wentDown = isHovered && this.mouseClicked;
+
+        fill(isHovered? this.COLOR_HOVERED : this.COLOR_IDLE);
         rect(x, y, width, height);
-        fill('white');
+        fill(isHovered? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
         text(label, x + padding, y + padding);
 
         return wentDown;
     }
 
+    /** 
+     * Draws an interactive button that has an active/inactive state.
+     * @param {string} label Text to display on the button
+     * @param {boolean} isActive Should the button appear "active" even if not hovered?
+     * @param {number} x Normalized left coordinate of the button
+     * @param {number} y Normalized bottom coordinate of the button
+     * @returns {boolean} True if the button was clicked this frame
+     */
     toggleButton(label, isActive, x, y) {
         textSize(20);
         const labelDims = measureTextDims(label);
@@ -408,57 +423,127 @@ class UserInterface {
         const width = labelDims[0] + padding * 2;
         const height = labelDims[1] + padding * 2;
 
-        let wentDown = false;
-        let showActive = isActive;
-        if (this.isHoveringRect(x, y, width, height)) {
-            showActive = true;
-            wentDown = this.mouseClicked;
-        }
-        if (showActive) {
-            fill('green');
+        const isHovered = this.isHoveringRect(x, y, width, height);
+        const wentDown = isHovered && this.mouseClicked;
+
+        if (isHovered) {
+            fill(this.COLOR_HOVERED);
+        } else if (isActive) {
+            fill(this.COLOR_ACTIVE);
         } else {
-            fill('black');
+            fill(this.COLOR_IDLE);
         }
         rect(x, y, width, height);
-        fill('white');
+
+        fill(isHovered || isActive? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
         text(label, x + padding, y + padding);
 
         return wentDown;
     }
 
+    /** 
+     * Must be called exactly once at the end of the frame.
+     * @returns {void}
+     */
     onFrameEnd() {
         this.mouseClicked = false;
     }
 
+    /** 
+     * Remove all event listeners set up in the constructor.
+     * @returns {void}
+     */
     cleanUp() {
-        window.removeEventListener('mousemove', this._onMouseMove);
+        this._removeListeners();
     }
 }
 
+const statusWs = new WebSocket(`ws://${window.location.host}/status`);
+statusWs.onopen = (evt) => {
+    console.log('OPEN');
+};
+statusWs.onmessage = (evt) => {
+    console.log('MSG', evt);
+};
+
+const dataWs = new WebSocket(`ws://${window.location.host}/data`);
+dataWs.onopen = (evt) => {
+    console.log('OPEN');
+};
+dataWs.onclose = (evt) => {
+    console.log('CLOSED');
+};
+dataWs.onmessage = (evt) => {
+    console.log('MSG', evt);
+};
+
+/**
+ * @typedef State
+ * Mutable state that may be mutated by each animation tick.
+ * `data` is of particular importance -- it will be sent to the server each frame.
+ * The server will forward it to the microcontroller.
+ */
+let state = {
+    /** 
+     * @type {Uint8Array} bytes representing LED colors. Every 3 bytes correspond to the Red, Green, and Blue channels of an LED.
+     * The length of this `Uint8Array` should exactly match 3 times the total number of LEDs.
+    */
+    data: new Uint8Array(0),
+    lineX: 0,
+    animState: 0
+};
+
+/**
+ * @typedef Mappings
+ * Mappings that express the relationship between data points in different coordinate systems.
+ * The length of each array should correspond to the total number of LEDs.
+ */
+const mappings = {
+    /** @type {[x: number, y: number, z: number][]} array of data points in physical coordinates */
+    physical: [],
+    /** @type {[x: number, y: number, z: number][]} corresponding array of data points in normalized coordinates */
+    normalized: []
+}
+
+/**
+ * Load the given mapping file containing physical coordinates.
+ * Use it to initialize the nomalized mappings and the data `Uint8Array`.
+ */
+fetch(`http://${window.location.host}/mappings/mapping.json`).then(async (value) => {
+    const data = await value.json();
+    mappings.physical = data;
+    mappings.normalized = mapPointsToNormalizedCoords(data);
+
+    state.data = new Uint8Array(data.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
+});
+/** @type HTMLCanvasElement */
+const canvas = document.getElementById('visualization');
+/** @type CanvasRenderingContext2D */
+const ctx = canvas.getContext('2d');
+autoResize(ctx);
+
+/** Circle constant -- radians in a full circle */
+const TAU = Math.PI * 2;
+
 const UI = new UserInterface(ctx);
 
-function loop(elapsedMs) {
-    autoResize(ctx);
-    const pixelsToNorm = 1 / ctx.canvas.width;
+/**
+ * Animation tick function called repeatedly.
+ * @param {number} elapsedMs Number of milliseconds elapsed since last tick
+ * @param {Mappings} mappings 
+ * @param {State} state 
+ */
+function tick(elapsedMs, mappings, state) {
+    const pixelsToNorm = 1 / ctx.canvas.clientHeight;
     const bottom = -1;
     const top = 1;
     const left = -1;
     const right = 1;
-    const width = 2;
-    const height = 2;
-
-
-    // if (UI.button('Anim 1', x, y)) {
-
-    // }
 
     strokeWeight(2 * pixelsToNorm);
 
-
     // Background
-    fill('#ff00ffff');
-    rect(-2, bottom, width * 2, height);
-    rect(left, bottom, width, height);
+    clear('#ff00ffff');
 
     // Origin Crosshairs
     stroke('#000000bb');
@@ -499,6 +584,7 @@ function loop(elapsedMs) {
         }
 
         if (state.animState == 1) {
+            strokeWeight(4 * pixelsToNorm);
             fill('#00000000');
             let dia = (Math.sin(elapsedMs * 0.001) + 1) * 0.5;
             ellipse(0, 0, dia, dia);
@@ -520,23 +606,30 @@ function loop(elapsedMs) {
 
         // Calculate the color of the current pixel:
         const color = 0xFF | state.data[i * 3 + 2] << 8 | state.data[i * 3 + 1] << 16 | state.data[i * 3 + 0] << 24;
-        fill(`#${(color >>> 0).toString(16).padStart(8, '0')}`);
+        fill(color);
         circle(pt[0], pt[1], 0.01);
     }
 
-    if (UI.toggleButton('Anim 1', state.animState == 0, -0.5, 0.5)) {
+    if (UI.toggleButton('Anim 1', state.animState == 0, -1, 0.5)) {
         state.animState = 0;
     }
-    if (UI.toggleButton('Anim 2', state.animState == 1, -0.5, 0.4)) {
+    if (UI.toggleButton('Anim 2', state.animState == 1, -1, 0.4)) {
         state.animState = 1;
     }
 
-    if (isReadyToSend) {
+    if (dataWs.readyState === WebSocket.OPEN) {
         dataWs.send(state.data);
     }
+}
 
+/**
+ * Main animation loop
+ * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
+ */
+function loop(elapsedMs) {
+    autoResize(ctx);
+    tick(elapsedMs, mappings, state);
     UI.onFrameEnd();
     requestAnimationFrame(loop);
 }
-
 requestAnimationFrame(loop);

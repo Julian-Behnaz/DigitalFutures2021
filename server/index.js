@@ -229,3 +229,4 @@ server.on('upgrade', function upgrade(request, socket, head) {
 
 scanForDevices();
 server.listen(SERVER_PORT);
+console.log(`Listening at http://localhost:${SERVER_PORT}/ ...`)
