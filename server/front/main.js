@@ -144,6 +144,26 @@ function line(x1, y1, x2, y2) {
     ctx.lineTo(x2, y2);
     ctx.stroke();
 }
+function shortestDistance(x1, y1, x2, y2, x3, y3) {
+    let px = x2 - x1;
+    let py = y2 - y1;
+    let temp = (px * px) + (py * py);
+    let u = ((x3 - x1) * px + (y3 - y1) * py) / (temp);
+    if (u > 1) {
+        u = 1;
+    }
+    else if (u < 0) {
+        u = 0;
+    }
+    let x = x1 + u * px;
+    let y = y1 + u * py;
+
+    let dx = x - x3;
+    let dy = y - y3;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    return dist;
+
+}
 
 let _fillStyle = null;
 let _strokeStyle = null;
@@ -259,9 +279,9 @@ function canvasColorFromNumber(rgba) {
  * @returns {string} Color as a canvas string
  */
 function canvasColorFromNumberOrString(color) {
-    if (typeof(color) === 'string') {
+    if (typeof (color) === 'string') {
         return color;
-    } else if (typeof(color) === 'number') {
+    } else if (typeof (color) === 'number') {
         return canvasColorFromNumber(color);
     }
 }
@@ -435,9 +455,9 @@ class UserInterface {
         const isHovered = this.isHoveringRect(x, y, width, height);
         const wentDown = isHovered && this.mouseClicked;
 
-        fill(isHovered? this.COLOR_HOVERED : this.COLOR_IDLE);
+        fill(isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE);
         rect(x, y, width, height);
-        fill(isHovered? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
+        fill(isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
         text(label, x + padding, y + padding);
 
         return wentDown;
@@ -470,7 +490,7 @@ class UserInterface {
         }
         rect(x, y, width, height);
 
-        fill(isHovered || isActive? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
+        fill(isHovered || isActive ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
         text(label, x + padding, y + padding);
 
         return wentDown;
@@ -604,7 +624,7 @@ function tick(elapsedMs, mappings, state) {
 
     state.lineX += 0.01;
     if (state.lineX > 1) {
-        state.lineX = 0;
+        state.lineX = -1;
     }
     let lineXNorm = state.lineX;
 
@@ -647,6 +667,20 @@ function tick(elapsedMs, mappings, state) {
         }
 
 
+        if (state.animState == 2) {
+            strokeWeight(4 * pixelsToNorm);
+            stroke('#ffffffff');
+            noFill();
+            line(0, 0, Math.sin(elapsedMs * 0.001), Math.cos(elapsedMs * 0.001));
+            let dist = shortestDistance(pt[0], pt[1], 0, 0, (Math.sin(elapsedMs * 0.001) - 0) / 2, (Math.cos(elapsedMs * 0.001) - 0) / 2);
+            if (dist < 0.4) {
+                state.data[i * 3 + 0] = 255;
+            } else {
+                state.data[i * 3 + 0] = 0;
+            }
+        }
+
+
         //green and blue
         state.data[i * 3 + 1] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
         state.data[i * 3 + 2] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
@@ -668,6 +702,10 @@ function tick(elapsedMs, mappings, state) {
     if (UI.toggleButton('Anim 2', state.animState == 1, -1, 0.4)) {
         state.animState = 1;
     }
+    if (UI.toggleButton('Anim 3', state.animState == 2, -1, 0.3)) {
+        state.animState = 2;
+    }
+
 
     if (dataWs.readyState === WebSocket.OPEN) {
         dataWs.send(state.data);
