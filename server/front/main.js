@@ -145,6 +145,9 @@ function line(x1, y1, x2, y2) {
     ctx.stroke();
 }
 
+let _fillStyle = null;
+let _strokeStyle = null;
+
 /**
  * Draw a circle with the current fill color
  * @param {number} x
@@ -153,9 +156,16 @@ function line(x1, y1, x2, y2) {
  * @returns {void}
  */
 function circle(x, y, radius) {
-    ctx.beginPath();
-    ctx.ellipse(x, y, radius, radius, 0, 0, TAU);
-    ctx.fill();
+    if (_fillStyle || _strokeStyle) {
+        ctx.beginPath();
+        ctx.ellipse(x, y, radius, radius, 0, 0, TAU);
+        if (_fillStyle) {
+            ctx.fill();
+        }
+        if (_strokeStyle) {
+            ctx.stroke();
+        }
+    }
 }
 
 /**
@@ -167,10 +177,16 @@ function circle(x, y, radius) {
  * @returns {void}
  */
 function ellipse(x, y, r1, r2) {
-    ctx.beginPath();
-    ctx.ellipse(x, y, r1, r2, 0, 0, TAU);
-    ctx.fill();
-    ctx.stroke();
+    if (_fillStyle || _strokeStyle) {
+        ctx.beginPath();
+        ctx.ellipse(x, y, r1, r2, 0, 0, TAU);
+        if (_fillStyle) {
+            ctx.fill();
+        }
+        if (_strokeStyle) {
+            ctx.stroke();
+        }
+    }
 }
 
 /**
@@ -179,7 +195,16 @@ function ellipse(x, y, r1, r2) {
  * @returns {void}
  */
 function fill(color) {
-    ctx.fillStyle = canvasColorFromNumberOrString(color);
+    _fillStyle = canvasColorFromNumberOrString(color);
+    ctx.fillStyle = _fillStyle;
+}
+
+function noFill() {
+    _fillStyle = null;
+}
+
+function noStroke() {
+    _strokeStyle = null;
 }
 
 /**
@@ -188,7 +213,8 @@ function fill(color) {
  * @returns {void}
  */
 function stroke(color) {
-    ctx.strokeStyle = canvasColorFromNumberOrString(color);
+    _strokeStyle = canvasColorFromNumberOrString(color);
+    ctx.strokeStyle = _strokeStyle;
 }
 
 /**
@@ -206,7 +232,16 @@ function strokeWeight(weight) {
  * @returns {void}
  */
 function rect(x, y, width, height) {
-    ctx.fillRect(x, y, width, height);
+    if (_fillStyle || _strokeStyle) {
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        if (_fillStyle) {
+            ctx.fill();
+        }
+        if (_strokeStyle) {
+            ctx.stroke();
+        }
+    }
 }
 
 /**
@@ -559,9 +594,11 @@ function tick(elapsedMs, mappings, state) {
     }
 
     // Origin Crosshairs
-    stroke('#000000bb');
+    stroke('#ffffffff');
     line(left, 0, right, 0);
     line(0, bottom, 0, top);
+
+    noStroke();
 
     const normMapping = mappings.normalized;
 
@@ -598,7 +635,8 @@ function tick(elapsedMs, mappings, state) {
 
         if (state.animState == 1) {
             strokeWeight(4 * pixelsToNorm);
-            fill('#00000000');
+            stroke('#ffffffff');
+            noFill();
             let dia = (Math.sin(elapsedMs * 0.001) + 1) * 0.5;
             ellipse(0, 0, dia, dia);
             if (length(pt[0], pt[1]) < dia) {
@@ -614,6 +652,7 @@ function tick(elapsedMs, mappings, state) {
         state.data[i * 3 + 2] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
     }
 
+    noStroke();
     for (let i = 0; i < normMapping.length; i++) {
         const pt = normMapping[i];
 
