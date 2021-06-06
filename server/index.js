@@ -113,7 +113,7 @@ async function scanForDevices() {
 }
 
 let fsWait = false;
-fs.watch('./front', (event, filename) => {
+fs.watch('./front', {recursive: true}, (event, filename) => {
   if (filename) {
     if (fsWait) return;
     fsWait = setTimeout(() => {

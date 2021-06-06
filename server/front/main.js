@@ -119,123 +119,17 @@ function autoResize(ctx) {
     }
 }
 
-// function shortestDistance(x1, y1, x2, y2, x3, y3) {
-//     let px = x2 - x1;
-//     let py = y2 - y1;
-//     let temp = (px * px) + (py * py);
-//     let u = ((x3 - x1) * px + (y3 - y1) * py) / (temp);
-//     if (u > 1) {
-//         u = 1;
-//     }
-//     else if (u < 0) {
-//         u = 0;
-//     }
-//     let x = x1 + u * px;
-//     let y = y1 + u * py;
-
-//     let dx = x - x3;
-//     let dy = y - y3;
-//     let dist = Math.sqrt(dx * dx + dy * dy);
-//     return dist;
-// }
-
-// /**
-//  * Draw an ellipse with the current fill color
-//  * @param {number} x
-//  * @param {number} y
-//  * @param {number} r1
-//  * @param {number} r2
-//  * @returns {void}
-//  */
-// function ellipse(x, y, r1, r2) {
-//     if (_fillStyle || _strokeStyle) {
-//         ctx.beginPath();
-//         ctx.ellipse(x, y, r1, r2, 0, 0, TAU);
-//         if (_fillStyle) {
-//             ctx.fill();
-//         }
-//         if (_strokeStyle) {
-//             ctx.stroke();
-//         }
-//     }
-// }
-
 /**
- * @param x1
- * @param y1
- * @param x2
- * @param y2
- * @returns The distance between two points
+ * @param {number} x1
+ * @param {number} y1
+ * @param {number} x2
+ * @param {number} y2
+ * @returns {number} The distance between two points
  */
 function dist(x1, y1, x2, y2) {
     return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
-// /**
-//  * @param x
-//  * @param y
-//  * @returns The length of a vector
-//  */
-// function length(x, y) {
-//     return Math.sqrt(x * x + y * y);
-// }
-
-// /**
-//  * @param x1
-//  * @param y1
-//  * @param x2
-//  * @param y2
-//  * @returns The squared distance between two points
-//  */
-// function sqrDist(x1, y1, x2, y2) {
-//     return (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
-// }
-
-// /**
-//  * Set the text size in screen pixels.
-//  * @param {number} size
-//  * @returns {void}
-//  */
-// function textSize(size) {
-//     ctx.font = `${size}px sans-serif`;
-// }
-
-// /**
-//  * Draw the given `text` string at the specified
-//  * x,y coordinate in normalized space.
-//  * @param {string} text
-//  * @param {number} x
-//  * @param {number} y
-//  * @returns {void}
-//  */
-// function text(text, x, y) {
-//     const canvas = ctx.canvas;
-//     const width = canvas.width;
-//     const height = canvas.height;
-
-//     const scale = 1;
-//     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-//     ctx.fillText(text, width * (x * 0.5 * DIMS.aspect + 0.5), height * (0.5 - y * 0.5));
-//     ctx.setTransform(DIMS.scaleX, 0, 0, DIMS.scaleY, DIMS.translateX, DIMS.translateY);
-// }
-
-// /**
-//  * Returns the width of the given text 
-//  * in the normalized coordinate system, using the current
-//  * font size.
-//  * @param {string} text
-//  */
-// function measureTextDims(text) {
-//     const scale = 1;
-//     ctx.setTransform(scale, 0, 0, scale, 0, 0);
-
-//     const measurements = ctx.measureText(text);
-//     const textWidth = measurements.width / DIMS.scaleX;
-//     const textHeight = (measurements.actualBoundingBoxAscent - measurements.actualBoundingBoxDescent) / -DIMS.scaleY;
-
-//     ctx.setTransform(DIMS.scaleX, 0, 0, DIMS.scaleY, DIMS.translateX, DIMS.translateY);
-//     return [textWidth, textHeight];
-// }
 
 // class UserInterface {
 //     /** @type {[x: number, y: number]} Position of the mouse in normalized coordinates. */
@@ -443,8 +337,9 @@ class Vector3 extends Array {
     }
 
     /**
-     * Modifies `out` with the result of adding the components of
-     * the vectors `a` and `b`.
+     * Returns the result of adding the components of
+     * the vectors `a` and `b`. If `out` is provided,
+     * modifies it instead of creating a new vector. 
      * @param {iVector3} a 
      * @param {iVector3} b 
      * @param {Vector3} [out]
@@ -458,6 +353,15 @@ class Vector3 extends Array {
         out[1] = a[1] + b[1];
         out[2] = a[2] + b[2];
         return out;
+    }
+
+    /**
+     * Returns a new vector formed by adding `this` and `vector`.
+     * @param {iVector3} vector
+     * @returns {Vector3}
+     */
+    plus(vector) {
+        return Vector3.add(this, vector);
     }
 
     /**
@@ -478,6 +382,15 @@ class Vector3 extends Array {
     }
 
     /**
+     * Returns a new vector formed by subtracting `vector` from `this`.
+     * @param {iVector3} vector
+     * @returns {Vector3}
+     */
+    minus(vector) {
+        return Vector3.subtract(this, vector);
+    }
+
+    /**
      * Modifies `out` with the result of multiplying the components of
      * the vector `a` with `multiplier`.
      * @param {iVector3} a 
@@ -492,6 +405,15 @@ class Vector3 extends Array {
         out[1] = a[1] * multiplier;
         out[2] = a[2] * multiplier;
         return out;
+    }
+
+    /**
+     * Returns a new vector formed by scaling `this` by multiplier.
+     * @param {number} multiplier
+     * @returns {Vector3}
+     */
+    scale(multiplier) {
+        return Vector3.scaled(this, multiplier);
     }
 
     /**
@@ -530,6 +452,22 @@ class Vector3 extends Array {
      */
     normalized() {
         return Vector3.normalize(this);
+    }
+
+    /**
+     * Returns the length of `this`.
+     * @returns {number}
+     */
+    getMagnitude() {
+        return Vector3.magnitude(this);
+    }
+
+    /**
+     * Returns the squared length of `this`.
+     * @returns {number}
+     */
+    getSqrMagnitude() {
+        return Vector3.sqrMagnitude(this);
     }
 
     /**
@@ -1120,7 +1058,7 @@ class Space {
      */
     line(pt1, pt2, style = {}) {
         const color = style.color === undefined ? null : style.color;
-        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -1147,7 +1085,7 @@ class Space {
      */
     crosshairs(centerPt, radius, style = {}) {
         const color = style.color === undefined ? null : style.color;
-        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         this.line([centerPt[0] - radius, centerPt[1], centerPt[2]],
             [centerPt[0] + radius, centerPt[1], centerPt[2]], { color, thickness });
@@ -1160,7 +1098,7 @@ class Space {
     axes(radius, textSize, style = {}) {
         const stroke = style.stroke === undefined ? null : style.stroke;
         const fill = style.fill === undefined ? 'white' : style.fill;
-        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        const thickness = style.thickness === undefined ? 1 : style.thickness;
         this.crosshairs([0, 0, 0], radius, { color: stroke, thickness });
         this.text(`+X`, textSize, [radius * 0.9, 0, 0], { fill });
         this.text(`-X`, textSize, [-radius * 0.9, 0, 0], { fill });
@@ -1208,7 +1146,7 @@ class Space {
     polygon(points, style = {}) {
         const fill = style.fill === undefined ? null : style.fill;
         const stroke = style.stroke === undefined ? 0xFF : style.stroke;
-        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         if (points.length > 0) {
             const mat = this.matrix;
@@ -1247,7 +1185,7 @@ class Space {
     sphere(centerPt, radius, style = {}) {
         const fill = style.fill === undefined ? null : style.fill;
         const stroke = style.stroke === undefined ? 0xFF : style.stroke;
-        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -1271,7 +1209,7 @@ class Space {
      * Draw text
      * 
      * @param {string} text - The text to display
-     * @param {number} size - Size of the text
+     * @param {number} size - Font size
      * @param {iVector3} position - Position of the text
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
      * @param {string|number} [style.fill] - Fill color of the text.
@@ -1289,6 +1227,26 @@ class Space {
         ctx.font = `${size * scaleX}px sans-serif`;
         ctx.fillStyle = this._canvasColor(fill);
         ctx.fillText(text, pt[0], pt[1]);
+    }
+
+    /**
+     * Returns the width and height of the given
+     * `text` with the specified font `size`.
+     * 
+     * @param {string} text - The text to display
+     * @param {number} size - Font size
+     * @returns {[width: number, height: number]}
+     */
+    measureText(text, size) {
+        const ctx = this.ctx;
+        const scaleX = Math.abs(this.scale[0]);
+        const scaleY = Math.abs(this.scale[1]);
+        ctx.font = `${size * 0.01 * scaleX}px sans-serif`;
+        const measurements = ctx.measureText(text);
+
+        const textWidth = measurements.width / scaleX;
+        const textHeight = (measurements.actualBoundingBoxAscent - measurements.actualBoundingBoxDescent) / scaleY;
+        return [textWidth, textHeight];
     }
 
     /**
@@ -1312,98 +1270,145 @@ class Space {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const statusWs = new WebSocket(`ws://${window.location.host}/status`);
-statusWs.onopen = (evt) => {
-    console.log('OPEN');
-};
-statusWs.onmessage = (evt) => {
-    console.log('MSG', evt);
-};
-
-const dataWs = new WebSocket(`ws://${window.location.host}/data`);
-dataWs.onopen = (evt) => {
-    console.log('OPEN');
-};
-dataWs.onclose = (evt) => {
-    console.log('CLOSED');
-};
-dataWs.onmessage = (evt) => {
-    console.log('MSG', evt);
-};
-
-const updateWs = new WebSocket(`ws://${window.location.host}/update`);
-updateWs.onmessage = (evt) => {
-    console.log('MSG', evt);
-    location.reload();
-};
-
-/**
- * Mutable state that may be mutated by each animation tick.
- * `data` is of particular importance -- it will be sent to the server each frame.
- * The server will forward it to the microcontroller.
- * 
- * @typedef State
- * @property {Uint8Array} data - bytes representing LED colors. Every 3 bytes correspond to the Red, Green, and Blue channels of an LED.
- * The length of this `Uint8Array` should exactly match 3 times the total number of LEDs.
- */
-const state = {
-    data: new Uint8Array(0),
-    lineX: 0,
-    animState: 0
-};
-
-/**
- * @typedef {Object} Mappings
- * Mappings that express the relationship between data points in different coordinate systems.
- * The length of each array should correspond to the total number of LEDs.
- */
-const mappings = {
-    /** @type {iVector3[]} array of data points in physical coordinates */
-    physical: [],
-    /** @type {iVector3[]} corresponding array of data points in normalized coordinates */
-    normalized: [],
-    /** @type {iVector3[]} flat array of data points in normalized coordinates */
-    normalizedFlat: []
+class Spaces {
+    /**
+     * @param {CanvasRenderingContext2D} ctx 
+     */
+    constructor(ctx){
+        this.Front = new Space(ctx, 0, .5, 0.5, 0.5, -1, 1);
+        this.Perspective = new Space(ctx, 0.5, .5, 0.5, 0.5, -1, 1);
+        this.Top = new Space(ctx, 0, 0, 0.5, 0.5, -1, 1);
+        this.GUI = new Space(ctx, 0.5, 0, 0.5, 0.5, -1, 1);
+        this.Frames = new Space(ctx, 0, 0, 1, 1, 0, 1, /* squareAspect */ false);
+    }
 }
 
+class State {
+    constructor() {
+        /** Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED. */
+        this.data = new Uint8Array(0)
+        this.reset();
+        this.tryRestoreFromSave();
 
-Promise.all(
-    [fetch(`http://${window.location.host}/mappings/mappingPersp.json`).then((value) => value.json()),
-    fetch(`http://${window.location.host}/mappings/mappingFlat.json`).then((value) => value.json())]
-).then(([persp, flat]) => {
-    mappings.physical = persp;
-    mappings.normalized = mapPointsToNormalizedCoords(persp);
-    mappings.normalizedFlat = mapPointsToNormalizedCoords(flat);
+        this.statusWs = new WebSocket(`ws://${window.location.host}/status`);
+        this.statusWs.onopen = (evt) => {
+            console.log('OPEN');
+        };
+        this.statusWs.onmessage = (evt) => {
+            console.log('MSG', evt);
+        };
+        
+        this.dataWs = new WebSocket(`ws://${window.location.host}/data`);
+        this.dataWs.onopen = (evt) => {
+            console.log('OPEN');
+        };
+        this.dataWs.onclose = (evt) => {
+            console.log('CLOSED');
+        };
+        this.dataWs.onmessage = (evt) => {
+            console.log('MSG', evt);
+        };
+        
+        this.updateWs = new WebSocket(`ws://${window.location.host}/update`);
+        this.updateWs.onmessage = (evt) => {
+            // We got a message that a file changed.
+            // Reload the browser, but save any state that should persist between
+            // reloads.
+            console.log('MSG', evt);
+            this.savePreReload();
+            location.reload();
+        };
+    }
 
-    state.data = new Uint8Array(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
-});
+    /**
+     * Reset the state of all values that persist between reloads
+     */
+    reset() {
+        this.animState = 0;
+        this.lineX = 0;
+    }
+
+    /**
+     * Save any data that should persist between reloads.
+     */
+    savePreReload() {
+        localStorage.setItem(State.STORAGE_KEY, JSON.stringify({
+            animState: this.animState,
+            lineX: this.lineX,
+        }));
+    }
+
+    /**
+     * Restore any data we persisted.
+     */
+    tryRestoreFromSave() {
+        const storedStr = localStorage.getItem(State.STORAGE_KEY);
+        if (storedStr) {
+            try {
+                const stored = JSON.parse(storedStr);
+                this.animState = stored.animState;
+                this.lineX = stored.lineX;
+            } catch (error) {
+                localStorage.removeItem(State.STORAGE_KEY);
+            }
+        }
+    }
+
+    /**
+     * Send the passed data to the server, which will pass it
+     * on to the microcontroller if there is a connected microcontroller.
+     * 
+     * @param {Uint8Array} data
+     */
+    trySendToMicrocontroller(data) {
+        if (this.dataWs.readyState === WebSocket.OPEN) {
+            this.dataWs.send(data);
+        }
+    }
+}
+State.STORAGE_KEY = 'InstallationState';
+
+/**
+ * Mappings that express the relationship between data points in different coordinate systems.
+ * The length of each stored array should correspond to the total number of LEDs.
+ */
+class Mappings {
+    /** @param {State} state */
+    constructor(state) {
+        /** @type {iVector3[]} array of data points in physical coordinates */
+        this.physical = [];
+        /** @type {iVector3[]} corresponding array of data points in normalized coordinates */
+        this.normalized = [];
+        /** @type {iVector3[]} flat array of data points in normalized coordinates */
+        this.normalizedFlat = [];
+
+        Promise.all(
+            [fetch(`http://${window.location.host}/mappings/mappingPersp.json`).then((value) => value.json()),
+            fetch(`http://${window.location.host}/mappings/mappingFlat.json`).then((value) => value.json())]
+        ).then(([persp, flat]) => {
+            this.physical = persp;
+            this.normalized = mapPointsToNormalizedCoords(persp);
+            this.normalizedFlat = mapPointsToNormalizedCoords(flat);
+        
+            state.data = new Uint8Array(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
+        });
+    }
+}
 
 /** Circle constant -- radians in a full circle */
 const TAU = Math.PI * 2;
 
 // const UI = new UserInterface(ctx);
 
+const state = new State();
+const mappings = new Mappings(state);
 /** @type {HTMLCanvasElement} */
 const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
 /** @type {CanvasRenderingContext2D} */
 const ctx = canvas.getContext('2d');
 autoResize(ctx);
+const spaces = new Spaces(ctx);
 
-/**
- * @typedef {Object} Spaces
- * @property {Space} Front
- * @property {Space} Perspective
- * @property {Space} Top
- * @property {Space} GUI
- * @property {Space} Frames
- */
-const spaces = {
-    Front: new Space(ctx, 0, .5, 0.5, 0.5, -1, 1),
-    Perspective: new Space(ctx, 0.5, .5, 0.5, 0.5, -1, 1),
-    Top: new Space(ctx, 0, 0, 0.5, 0.5, -1, 1),
-    GUI: new Space(ctx, 0.5, 0, 0.5, 0.5, -1, 1),
-    Frames: new Space(ctx, 0, 0, 1, 1, 0, 1, /* squareAspect */ false),
-}
 
 /**
  * Main animation loop
@@ -1442,7 +1447,7 @@ requestAnimationFrame(mainLoop);
 
 
 /**
- * Animation tick function called repeatedly.
+ * Animation tick function. Called at the screen refresh rate (typically 60x per second).
  * @param {number} elapsedMs Number of milliseconds elapsed since last tick
  * @param {Spaces} spaces 
  * @param {Mappings} mappings 
@@ -1477,7 +1482,12 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
 
     Top.text(`${mappings.normalizedFlat.length}`, 12, [0, 0, 0], { fill: 'white' });
     Perspective.text(`${mappings.normalized.length}`, 12, [0, 0, 0], { fill: 'white' });
-
+    Front.text(`${state.animState}`, 12, [-1, 0, -1], { fill: 'white' });
+    // state.animState++;
+    const [w, h] = Front.measureText(`${state.animState}`, 12);
+    Front.line([-1, 0, -1], [-1+w, 0, -1+h], {color: 'red', thickness:1});
+    
+    
     Front.drawLeds(mappings.normalized, state.data);
     Top.drawLeds(mappings.normalizedFlat, state.data);
     Perspective.drawLeds(mappings.normalized, state.data);
@@ -1593,7 +1603,5 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //     state.animState = 2;
     // }
 
-    if (dataWs.readyState === WebSocket.OPEN) {
-        dataWs.send(state.data);
-    }
+    state.trySendToMicrocontroller(state.data);
 }
