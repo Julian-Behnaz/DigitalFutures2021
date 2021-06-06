@@ -1,15 +1,19 @@
+// @ts-check
 'use strict';
 
 /**
  * Computes the bounding box of a set of points, returning a 3d array where each element
  * is a 2d array containing the min and max extent of that dimension
- * @param {[number,number,number][]} dataPoints
+ * @param {Vector3[]} dataPoints
  * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
  */
 function computeBoundingBox(dataPoints) {
     // Initialize a bounding box that contains nothing:
+    /** @type {[number, number]} */
     const minMaxX = [Infinity, -Infinity];
+    /** @type {[number, number]} */
     const minMaxY = [Infinity, -Infinity];
+    /** @type {[number, number]} */
     const minMaxZ = [Infinity, -Infinity];
 
     // Loop through all the points and compute their
@@ -30,54 +34,55 @@ function computeBoundingBox(dataPoints) {
     return [minMaxX, minMaxY, minMaxZ];
 }
 
-// /**
-//  * Linearly interpolates between `a` and `b` via `t`.
-//  * Returns `a` if `t` is 0.
-//  * Returns `b` if `t` is 1.
-//  * Returns in-between values for `t` between 0 and 1.
-//  * @param {number} a
-//  * @param {number} b
-//  * @param {number} t
-//  * @returns {number} interpolated value
-//  */
-// function lerp(a, b, t) {
-//     return (1 - t) * a + t * b;
-// }
+/**
+ * Linearly interpolates between `a` and `b` via `t`.
+ * Returns `a` if `t` is 0.
+ * Returns `b` if `t` is 1.
+ * Returns in-between values for `t` between 0 and 1.
+ * @param {number} a
+ * @param {number} b
+ * @param {number} t
+ * @returns {number} interpolated value
+ */
+function lerp(a, b, t) {
+    return (1 - t) * a + t * b;
+}
 
-// /**
-//  * Computes the inverse lerp.
-//  * If `v` is `a`, returns 0.
-//  * If `v` is `b`, returns 1.
-//  * Otherwise, returns values in-between.
-//  * Fails if `a` and `b` are the same.
-//  * @param {number} a
-//  * @param {number} b
-//  * @param {number} v
-//  * @returns {number} computed t value
-//  */
-// function ilerp(a, b, v) {
-//     return (v - a) / (b - a);
-// }
+/**
+ * Computes the inverse lerp.
+ * If `v` is `a`, returns 0.
+ * If `v` is `b`, returns 1.
+ * Otherwise, returns values in-between.
+ * Fails if `a` and `b` are the same.
+ * @param {number} a
+ * @param {number} b
+ * @param {number} v
+ * @returns {number} computed t value
+ */
+function ilerp(a, b, v) {
+    return (v - a) / (b - a);
+}
 
-// /**
-//  * Linearly maps an `inValue` into a new coordinate space.
-//  * If `inValue` is `inStart`, returns `outStart`.
-//  * If `inValue` is `inEnd`, returns `outEnd`.
-//  * @param {number} inStart
-//  * @param {number} inEnd
-//  * @param {number} outStart
-//  * @param {number} outEnd
-//  * @param {number} inValue
-//  * @returns {number} outValue
-//  */
-// function linMap(inStart, inEnd, outStart, outEnd, inValue) {
-//     return lerp(outStart, outEnd, ilerp(inStart, inEnd, inValue));
-// }
+/**
+ * Linearly maps an `inValue` into a new coordinate space.
+ * If `inValue` is `inStart`, returns `outStart`.
+ * If `inValue` is `inEnd`, returns `outEnd`.
+ * @param {number} inStart
+ * @param {number} inEnd
+ * @param {number} outStart
+ * @param {number} outEnd
+ * @param {number} inValue
+ * @returns {number} outValue
+ */
+function linMap(inStart, inEnd, outStart, outEnd, inValue) {
+    return lerp(outStart, outEnd, ilerp(inStart, inEnd, inValue));
+}
 
 /**
  * Given some data points, converts them to points in a normalized coordinate space.
  * such that the max values are at 1 or -1.
- * @param {[x:number, y:number, z:number][]} dataPoints
+ * @param {Vector3[]} dataPoints
+ * @returns {Vector3[]}
  */
 function mapPointsToNormalizedCoords(dataPoints) {
     const bounds = computeBoundingBox(dataPoints);
@@ -90,27 +95,19 @@ function mapPointsToNormalizedCoords(dataPoints) {
     }
     const scaleFactor = 1 / maxBoundValue;
 
+    /** @type {Vector3[]} */
     const normalizedPoints = [];
     for (let i = 0; i < dataPoints.length; i++) {
         const pt = dataPoints[i];
+        /** @type {Vector3} */
         const scaledPt = [pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor];
         normalizedPoints.push(scaledPt);
     }
     return normalizedPoints;
 }
 
-// const DIMS = {
-//     aspect: 1,
-//     scaleX: 1,
-//     scaleY: 1,
-//     translateX: 0,
-//     translateY: 0,
-// };
-
 /**
  * Auto-resize the canvas to have the same number of pixels as the actual screen.
- * Set the canvas transformation matrix to initialize the canvas
- * coordinate space.
  * @param {CanvasRenderingContext2D} ctx
  */
 function autoResize(ctx) {
@@ -121,29 +118,8 @@ function autoResize(ctx) {
         canvas.width = desWidth;
         canvas.height = desHeight;
     }
-    // DIMS.aspect = desHeight / desWidth;
-    // DIMS.scaleX = desWidth / 2 * DIMS.aspect;
-    // DIMS.scaleY = -desHeight / 2;
-    // DIMS.translateX = desWidth / 2;
-    // DIMS.translateY = desHeight / 2;
-    // //https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/setTransform
-    // ctx.setTransform(DIMS.scaleX, 0, 0, DIMS.scaleY, DIMS.translateX, DIMS.translateY);
 }
 
-// /**
-//  * Draw a line with the current stroke color
-//  * @param {number} x1
-//  * @param {number} y1
-//  * @param {number} x2
-//  * @param {number} y2
-//  * @returns {void}
-//  */
-// function line(x1, y1, x2, y2) {
-//     ctx.beginPath();
-//     ctx.moveTo(x1, y1);
-//     ctx.lineTo(x2, y2);
-//     ctx.stroke();
-// }
 // function shortestDistance(x1, y1, x2, y2, x3, y3) {
 //     let px = x2 - x1;
 //     let py = y2 - y1;
@@ -162,30 +138,6 @@ function autoResize(ctx) {
 //     let dy = y - y3;
 //     let dist = Math.sqrt(dx * dx + dy * dy);
 //     return dist;
-
-// }
-
-// let _fillStyle = null;
-// let _strokeStyle = null;
-
-// /**
-//  * Draw a circle with the current fill color
-//  * @param {number} x
-//  * @param {number} y
-//  * @param {number} radius
-//  * @returns {void}
-//  */
-// function circle(x, y, radius) {
-//     if (_fillStyle || _strokeStyle) {
-//         ctx.beginPath();
-//         ctx.ellipse(x, y, radius, radius, 0, 0, TAU);
-//         if (_fillStyle) {
-//             ctx.fill();
-//         }
-//         if (_strokeStyle) {
-//             ctx.stroke();
-//         }
-//     }
 // }
 
 // /**
@@ -207,95 +159,6 @@ function autoResize(ctx) {
 //             ctx.stroke();
 //         }
 //     }
-// }
-
-// /**
-//  * Set the fill color
-//  * @param {string|number} color Fill color as a string or an RGBA integer (u32)
-//  * @returns {void}
-//  */
-// function fill(color) {
-//     _fillStyle = canvasColorFromNumberOrString(color);
-//     ctx.fillStyle = _fillStyle;
-// }
-
-// function noFill() {
-//     _fillStyle = null;
-// }
-
-// function noStroke() {
-//     _strokeStyle = null;
-// }
-
-// /**
-//  * Set the stroke color
-//  * @param {string|number} color Stroke color as a string or an RGBA integer (u32)
-//  * @returns {void}
-//  */
-// function stroke(color) {
-//     _strokeStyle = canvasColorFromNumberOrString(color);
-//     ctx.strokeStyle = _strokeStyle;
-// }
-
-// /**
-//  * Set the stroke thickness
-//  * @param {string} weight
-//  * @returns {void}
-//  */
-// function strokeWeight(weight) {
-//     ctx.lineWidth = weight;
-// }
-
-// /**
-//  * Draw a rectangle with the current fill color
-//  * @param {string} color
-//  * @returns {void}
-//  */
-// function rect(x, y, width, height) {
-//     if (_fillStyle || _strokeStyle) {
-//         ctx.beginPath();
-//         ctx.rect(x, y, width, height);
-//         if (_fillStyle) {
-//             ctx.fill();
-//         }
-//         if (_strokeStyle) {
-//             ctx.stroke();
-//         }
-//     }
-// }
-
-// /**
-//  * Given an integer (u32) representing an RGBA color,
-//  * returns a canvas-compatible color string.
-//  * @param {number} rgba 
-//  * @returns {string}
-//  */
-// function canvasColorFromNumber(rgba) {
-//     return `#${(rgba >>> 0).toString(16).padStart(8, '0')}`;
-// }
-
-// /**
-//  * @param {string|number} color Color as a string or an RGBA integer (u32)
-//  * @returns {string} Color as a canvas string
-//  */
-// function canvasColorFromNumberOrString(color) {
-//     if (typeof (color) === 'string') {
-//         return color;
-//     } else if (typeof (color) === 'number') {
-//         return canvasColorFromNumber(color);
-//     }
-// }
-
-// /**
-//  * Clear the full canvas with the given color.
-//  * @param {string} color 
-//  * @returns {void}
-//  */
-// function clear(color) {
-//     const prevColor = ctx.fillStyle;
-//     ctx.fillStyle = canvasColorFromNumberOrString(color);
-//     rect(-DIMS.scaleX * 0.5, -DIMS.scaleY * 0.5, DIMS.scaleX, DIMS.scaleY);
-//     ctx.fillStyle = prevColor;
 // }
 
 /**
@@ -514,6 +377,12 @@ function dist(x1, y1, x2, y2) {
 // }
 
 class Vector3 extends Array {
+    /** 
+     * @private
+     * @param {number} x
+     * @param {number} y
+     * @param {number} z
+     */
     constructor(x, y, z) {
         super(3);
         this[0] = x;
@@ -521,16 +390,45 @@ class Vector3 extends Array {
         this[2] = z;
     }
 
-    static from(x, y, z) {
+    /**
+     * Create a vector
+     * @param {number} x - X coordinate of the new vector
+     * @param {number} y - Y coordinate of the new vector
+     * @param {number} z - Z coordinate of the new vector
+     * @returns {Vector3} - A new vector
+     */
+    static create(x, y, z) {
         return new Vector3(x, y, z);
     }
 
+    /**
+     * Create an empty vector
+     * @returns {Vector3} - A new zero vector
+     */
     static zero() {
         return new Vector3(0, 0, 0);
     }
 }
 
 class Matrix4x4 extends Array {
+    /**
+     * @param {number} m11 
+     * @param {number} m12 
+     * @param {number} m13 
+     * @param {number} m14 
+     * @param {number} m21 
+     * @param {number} m22 
+     * @param {number} m23 
+     * @param {number} m24 
+     * @param {number} m31 
+     * @param {number} m32 
+     * @param {number} m33 
+     * @param {number} m34 
+     * @param {number} m41 
+     * @param {number} m42 
+     * @param {number} m43 
+     * @param {number} m44 
+     */
     constructor(m11, m12, m13, m14,
         m21, m22, m23, m24,
         m31, m32, m33, m34,
@@ -557,7 +455,26 @@ class Matrix4x4 extends Array {
         this[15] = m44;
     }
 
-    static from(m11, m12, m13, m14,
+    /**
+     * @param {number} m11 
+     * @param {number} m12 
+     * @param {number} m13 
+     * @param {number} m14 
+     * @param {number} m21 
+     * @param {number} m22 
+     * @param {number} m23 
+     * @param {number} m24 
+     * @param {number} m31 
+     * @param {number} m32 
+     * @param {number} m33 
+     * @param {number} m34 
+     * @param {number} m41 
+     * @param {number} m42 
+     * @param {number} m43 
+     * @param {number} m44 
+     * @returns {Matrix4x4}
+     */
+    static create(m11, m12, m13, m14,
         m21, m22, m23, m24,
         m31, m32, m33, m34,
         m41, m42, m43, m44) {
@@ -567,6 +484,12 @@ class Matrix4x4 extends Array {
             m41, m42, m43, m44);
     }
 
+    /**
+     * Create a new identity matrix. When multiplying
+     * the identity matrix with a vector, the vector is unchanged.
+     * When multiplying identity matrix with another matrix, the matrix is unchanged.
+     * @returns {Matrix4x4} - The identity matrix
+     */
     static identity() {
         return new Matrix4x4(1, 0, 0, 0,
             0, 1, 0, 0,
@@ -574,6 +497,13 @@ class Matrix4x4 extends Array {
             0, 0, 0, 1);
     }
 
+    /**
+     * Multiply `a` and `b` together, returning a new matrix.
+     * Note that the order in which you multiply matrices together changes the outcome.
+     * @param {Matrix4x4} a 
+     * @param {Matrix4x4} b 
+     * @returns {Matrix4x4}
+     */
     static multiply(a, b) {
         const c = Matrix4x4.identity();
         for (let i = 0; i < 4; i++) {
@@ -588,10 +518,23 @@ class Matrix4x4 extends Array {
         return c;
     }
 
+    /**
+     * Returns the result of multiplying `this` with `b`, returning a new matrix.
+     * Note that the order in which you multiply matrices together changes the outcome.
+     * @param {Matrix4x4} b 
+     * @returns {Matrix4x4}
+     */
     times(b) {
         return Matrix4x4.multiply(this, b);
     }
 
+    /**
+     * Returns a new matrix where each element is the sum of the corrseponding
+     * elements of `a` and `b`.
+     * @param {Matrix4x4} a 
+     * @param {Matrix4x4} b 
+     * @returns {Matrix4x4}
+     */
     static add(a, b) {
         const c = Matrix4x4.identity();
         for (let i = 0; i < 4; i++) {
@@ -602,10 +545,23 @@ class Matrix4x4 extends Array {
         return c;
     }
 
+    /**
+     * Returns a new matrix where each element is the sum of the corrseponding
+     * elements of `this` and `b`.
+     * @param {Matrix4x4} b 
+     * @returns {Matrix4x4}
+     */
     plus(b) {
         return Matrix4x4.add(this, b);
     }
 
+    /**
+     * Returns a new matrix where each element is the difference of the corrseponding
+     * elements of `a` and `b`.
+     * @param {Matrix4x4} a
+     * @param {Matrix4x4} b 
+     * @returns {Matrix4x4}
+     */
     static subtract(a, b) {
         const c = Matrix4x4.identity();
         for (let i = 0; i < 4; i++) {
@@ -616,10 +572,21 @@ class Matrix4x4 extends Array {
         return c;
     }
 
+    /**
+     * Returns a new matrix where each element is the difference of the corrseponding
+     * elements of `this` and `b`.
+     * @param {Matrix4x4} b 
+     * @returns {Matrix4x4}
+     */
     minus(b) {
         return Matrix4x4.subtract(this, b);
     }
 
+    /**
+     * Multiplies the matrix with a vector `vec`, transforming the vector by the matrix.
+     * @param {Vector3} vec
+     * @returns {Vector3}
+     */
     timesVector3([x, y, z]) {
         const res = Vector3.zero();
         const w = 1;
@@ -629,8 +596,13 @@ class Matrix4x4 extends Array {
         return res;
     }
 
+    /**
+     * Returns a new matrix formed by rotating `this` around the x axis by `radians`.
+     * @param {number} radians
+     * @returns {Matrix4x4}
+     */
     rotX(radians) {
-        const mat = Matrix4x4.from(
+        const mat = Matrix4x4.create(
             1, 0, 0, 0,
             0, Math.cos(radians), -Math.sin(radians), 0,
             0, Math.sin(radians), Math.cos(radians), 0,
@@ -638,8 +610,13 @@ class Matrix4x4 extends Array {
         return this.times(mat);
     }
 
+    /**
+     * Returns a new matrix formed by rotating `this` around the y axis by `radians`.
+     * @param {number} radians
+     * @returns {Matrix4x4}
+     */
     rotY(radians) {
-        const mat = Matrix4x4.from(
+        const mat = Matrix4x4.create(
             Math.cos(radians), 0, Math.sin(radians), 0,
             0, 1, 0, 0,
             -Math.sin(radians), 0, Math.cos(radians), 0,
@@ -647,8 +624,13 @@ class Matrix4x4 extends Array {
         return this.times(mat);
     }
 
+    /**
+     * Returns a new matrix formed by rotating `this` around the z axis by `radians`.
+     * @param {number} radians
+     * @returns {Matrix4x4}
+     */
     rotZ(radians) {
-        const mat = Matrix4x4.from(
+        const mat = Matrix4x4.create(
             Math.cos(radians), -Math.sin(radians), 0, 0,
             Math.sin(radians), Math.cos(radians), 0, 0,
             0, 0, 1, 0,
@@ -659,9 +641,11 @@ class Matrix4x4 extends Array {
 
 class Space {
     /**
-     * Create a new space.
-     * 
-     * The screen coordinates are in a space where 0,0 is top left and 1,1 is bottom right
+     * Create a new space for drawing on the screen.
+     * The space will appear with a corner at `screenX, screenY`
+     * and dimensions `screenWidth` and `screenHeight`.
+     * These coordinates exist in a space where 0,0 is the bottom left of the canvas
+     * and 1,1 is the top right of the canvas.
      * 
      * @param {CanvasRenderingContext2D} ctx - rendering canvas
      * @param {number} screenX
@@ -670,8 +654,17 @@ class Space {
      * @param {number} screenHeight
      * @param {number} initialYmin - initial minimum y value at the bottom of the space
      * @param {number} initialYmax - initial maximum y value at the top of the space
+     * @param {boolean} squareAspect - should the space be square? Defaults to `true`.
      */
-    constructor(ctx, screenX, screenY, screenWidth, screenHeight, initialYmin = -1, initialYmax = -1, squareAspect = true) {
+    constructor(
+            ctx, 
+            screenX, 
+            screenY, 
+            screenWidth, 
+            screenHeight, 
+            initialYmin = -1, 
+            initialYmax = -1, 
+            squareAspect = true) {
         this.ctx = ctx;
         this.screenX = screenX;
         this.screenY = screenY;
@@ -681,20 +674,68 @@ class Space {
         this.initialYmax = initialYmax;
         this.squareAspect = squareAspect;
 
-        this.scale = Vector3.from(1, 1, 1);
-        this.translation = Vector3.from(0, 0, 0);
-        this.rotation = Vector3.from(0, 0, 0);
+        this.scale = Vector3.create(1, 1, 1);
+        this.translation = Vector3.create(0, 0, 0);
+        this.rotation = Vector3.create(0, 0, 0);
 
         this.updateViewMatrix();
     }
 
-    canvasColor(rgba) {
+    /**
+     * Returns the given color converted to an HTML-canvas compatible color.
+     * @private
+     * @example
+     * canvasColor(0xFF0000FF); // Red color
+     * @example
+     * canvasColor('green'); // Green color
+     * @param {string|number} rgba - An HTML-canvas compatible color string or an unsigned 32 bit integer color in RGBA format.
+     * @returns {string} - An HTML-canvas compatible color string
+     */
+    _canvasColor(rgba) {
         if (typeof (rgba) === 'string') {
             return rgba;
         }
         return `#${(rgba >>> 0).toString(16).padStart(8, '0')}`;
     }
 
+    /**
+     * Clear the region in which the space exists.
+     * @returns {void}
+     */
+    clear() {
+        const screenX = this.screenX;
+        const screenY = this.screenY;
+        const screenWidth = this.screenWidth;
+        const screenHeight = this.screenHeight;
+        const ctx = this.ctx;
+        const canvas = ctx.canvas;
+        ctx.clearRect(
+            screenX * canvas.width, screenY * canvas.height,
+            (screenX + screenWidth) * canvas.width, (screenY + screenHeight) * canvas.height);
+    }
+
+    /**
+     * Fill the background of the space with the given color
+     * @param {string|number} color
+     * @returns {void}
+     */
+    background(color) {
+        const screenX = this.screenX;
+        const screenY = this.screenY;
+        const screenWidth = this.screenWidth;
+        const screenHeight = this.screenHeight;
+        const ctx = this.ctx;
+        const canvas = ctx.canvas;
+        ctx.fillStyle = this._canvasColor(color);
+        ctx.fillRect(
+            screenX * canvas.width, screenY * canvas.height,
+            (screenX + screenWidth) * canvas.width, (screenY + screenHeight) * canvas.height);
+    }
+
+    /**
+     * Updates the view matrix based on the current canvas dimensions and the current rotation.
+     * @returns {void}
+     */
     updateViewMatrix() {
         const ctx = this.ctx;
         const canvas = ctx.canvas;
@@ -713,7 +754,7 @@ class Space {
         this.translation[0] = (canvas.width / (this.initialYmax - this.initialYmin) * this.screenWidth + left);
         this.translation[1] = canvas.height - (canvas.height / (this.initialYmax - this.initialYmin) * this.screenHeight + top);
         this.translation[2] = 0;
-        const scaleMat = Matrix4x4.from(
+        const scaleMat = Matrix4x4.create(
             this.scale[0], 0, 0, 0,
             0, this.scale[1], 0, 0,
             0, 0, this.scale[2], 0,
@@ -725,7 +766,7 @@ class Space {
         rotMat = rotMat.rotY(rot[1]);
         rotMat = rotMat.rotZ(rot[2]);
 
-        const transMat = Matrix4x4.from(
+        const transMat = Matrix4x4.create(
             1, 0, 0, this.translation[0],
             0, 1, 0, this.translation[1],
             0, 0, 1, this.translation[2],
@@ -750,18 +791,21 @@ class Space {
      * @param {[x: number, y: number, z: number]} pt1 - coordinates of the first point
      * @param {[x: number, y: number, z: number]} pt2 - coordinates of the first point
      *
-     * @param {Object} style - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
-     * @param {string|number} style.color - Color of the line
-     * @param {number} style.thickness - Thickness of the line
+     * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
+     * @param {string|number} [style.color] - Color of the line
+     * @param {number} [style.thickness] - Thickness of the line
      * 
      * @returns {void}
      */
-    line(pt1, pt2, { color, thickness } = { color: 0xFF, thickness: 1 }) {
+    line(pt1, pt2, style = {}) {
+        const color = style.color === undefined? null : style.color;
+        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+
         const mat = this.matrix;
         const ctx = this.ctx;
         const a = mat.timesVector3(pt1);
         const b = mat.timesVector3(pt2);
-        ctx.strokeStyle = this.canvasColor(color);
+        ctx.strokeStyle = this._canvasColor(color);
         ctx.lineWidth = thickness;
         ctx.beginPath();
         ctx.moveTo(a[0], a[1]);
@@ -769,26 +813,120 @@ class Space {
         ctx.stroke();
     }
 
-    crosshairs(pt1, radius, { color, thickness } = { color: 0xFF, thickness: 1 }) {
-        this.line([pt1[0] - radius, pt1[1], pt1[2]],
-            [pt1[0] + radius, pt1[1], pt1[2]], { color, thickness });
-        this.line([pt1[0], pt1[1] - radius, pt1[2]],
-            [pt1[0], pt1[1] + radius, pt1[2]], { color, thickness });
-        this.line([pt1[0], pt1[1], pt1[2] - radius],
-            [pt1[0], pt1[1], pt1[2] + radius], { color, thickness });
+    /**
+     * Draw 3d crosshairs.
+     * 
+     * @param {Vector3} centerPt - Center of the crosshairs.
+     * @param {number} radius - Radius of the crosshairs.
+     * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
+     * @param {string|number} [style.color] - Color of the crosshair lines
+     * @param {number} [style.thickness] - Thickness of the crosshair lines
+     * @returns {void}
+     */
+    crosshairs(centerPt, radius, style = {}) {
+        const color = style.color === undefined? null : style.color;
+        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+
+        this.line([centerPt[0] - radius, centerPt[1], centerPt[2]],
+            [centerPt[0] + radius, centerPt[1], centerPt[2]], { color, thickness });
+        this.line([centerPt[0], centerPt[1] - radius, centerPt[2]],
+            [centerPt[0], centerPt[1] + radius, centerPt[2]], { color, thickness });
+        this.line([centerPt[0], centerPt[1], centerPt[2] - radius],
+            [centerPt[0], centerPt[1], centerPt[2] + radius], { color, thickness });
     }
 
-    rectXY(cornerPt, width, height, { color, thickness } = { color: 0xFF, thickness: 1 }) {
-        this.line(cornerPt, [cornerPt[0] + width, cornerPt[1], cornerPt[2]], { color, thickness });
-        this.line([cornerPt[0] + width, cornerPt[1], cornerPt[2]],
-            [cornerPt[0] + width, cornerPt[1] + height, cornerPt[2]], { color, thickness });
-        this.line([cornerPt[0] + width, cornerPt[1] + height, cornerPt[2]],
-            [cornerPt[0], cornerPt[1] + height, cornerPt[2]], { color, thickness });
-        this.line([cornerPt[0], cornerPt[1] + height, cornerPt[2]], cornerPt, { color, thickness });
+    axes(radius, textSize, style = {}) {
+        const stroke = style.stroke === undefined? null : style.stroke;
+        const fill = style.fill === undefined? 'white' : style.fill;
+        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+        this.crosshairs([0,0,0], radius, {color: stroke, thickness});
+        this.text(`+X`, textSize, [radius*0.9, 0, 0], {fill});
+        this.text(`-X`, textSize, [-radius*0.9, 0, 0], {fill});
+        this.text(`+Y`, textSize, [0, radius*0.9, 0], {fill});
+        this.text(`-Y`, textSize, [0, -radius*0.9, 0], {fill});
+        this.text(`+Z`, textSize, [0, 0, radius*0.9], {fill});
+        this.text(`-Z`, textSize, [0, 0, -radius*0.9], {fill});
     }
 
-    sphere(centerPt, radius, { fill, stroke, thickness } = { fill: 0xFF, stroke: 0xFF, thickness: 1 }) {
-        /** @type {CanvasRenderingContext2D} */
+    /**
+     * Draw a rectangle in the xy plane.
+     * 
+     * @param {Vector3} cornerPt - Center of the crosshairs.
+     * @param {number} width - Width of the rectangle
+     * @param {number} height - Height of the rectangle.
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill.
+     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the rectangle stroke
+     * @returns {void}
+     */
+    rectXY(cornerPt, width, height, style = {}) {
+        style.fill = style.fill === undefined? null : style.fill;
+        style.stroke = style.stroke === undefined? 0xFF : style.stroke;
+        style.thickness = style.thickness === undefined? 0xFF : style.thickness;
+
+        this.polygon([
+            cornerPt, 
+            [cornerPt[0], cornerPt[1] + height, cornerPt[2]],
+            [cornerPt[0] + width, cornerPt[1] + height, cornerPt[2]],
+            [cornerPt[0] + width, cornerPt[1], cornerPt[2]],
+        ], style);
+    }
+
+    /**
+     * Draw a polygon via the given points.
+     * 
+     * @param {Vector3[]} points - Points of the polygon
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number|null} [style.fill] - Fill color of the polygon. `null` for no fill.
+     * @param {string|number|null} [style.stroke] - Stroke color of the polygon. `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the polygon stroke
+     * @returns {void}
+     */
+    polygon(points, style = {}) {
+        const fill = style.fill === undefined? null : style.fill;
+        const stroke = style.stroke === undefined? 0xFF : style.stroke;
+        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+
+        if (points.length > 0) {
+            const mat = this.matrix;
+            const ctx = this.ctx;        
+            const start = mat.timesVector3(points[0]);
+            ctx.beginPath();
+            ctx.moveTo(start[0], start[1]);
+            for (let i = 1; i < points.length; i++) {
+                const pt = mat.timesVector3(points[i]);
+                ctx.lineTo(pt[0], pt[1]);
+            }
+            ctx.closePath();
+            if (fill) {
+                ctx.fillStyle = this._canvasColor(fill);
+                ctx.fill();
+            }
+            if (stroke && thickness) {
+                ctx.lineWidth = thickness;
+                ctx.strokeStyle = this._canvasColor(stroke);
+                ctx.stroke();
+            }
+        }
+    }
+
+    /**
+     * Draw a sphere.
+     * 
+     * @param {Vector3} centerPt - Center of the sphere
+     * @param {number} radius - Radius of the sphere
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number|null} [style.fill] - Fill color of the sphere. `null` for no fill.
+     * @param {string|number|null} [style.stroke] - Stroke color of the sphere. `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the sphere's stroke
+     * @returns {void}
+     */
+    sphere(centerPt, radius, style = {}) {
+        const fill = style.fill === undefined? null : style.fill;
+        const stroke = style.stroke === undefined? 0xFF : style.stroke;
+        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+
         const mat = this.matrix;
         const ctx = this.ctx;
         const pt = mat.timesVector3(centerPt);
@@ -797,16 +935,48 @@ class Space {
         ctx.beginPath();
         ctx.ellipse(pt[0], pt[1], radius * scaleX, radius * scaleY, 0, 0, Math.PI * 2);
         if (fill) {
-            ctx.fillStyle = this.canvasColor(fill);
+            ctx.fillStyle = this._canvasColor(fill);
             ctx.fill();
         }
-        if (stroke) {
+        if (stroke && thickness) {
             ctx.lineWidth = thickness;
-            ctx.strokeStyle = this.canvasColor(stroke);
+            ctx.strokeStyle = this._canvasColor(stroke);
             ctx.stroke();
         }
     }
 
+    /**
+     * Draw text
+     * 
+     * @param {string} text - The text to display
+     * @param {number} size - Size of the text
+     * @param {Vector3} position - Position of the text
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number} [style.fill] - Fill color of the text.
+     * @returns {void}
+     */
+    text(text, size, position, style = {}) {
+        const fill = style.fill === undefined? 0xFF : style.fill;
+
+        const mat = this.matrix;
+        const ctx = this.ctx;
+        const pt = mat.timesVector3(position);
+
+        const scaleX = Math.abs(this.scale[0]) * 0.01;
+
+        ctx.font = `${size*scaleX}px sans-serif`;
+        ctx.fillStyle = this._canvasColor(fill);
+        ctx.fillText(text, pt[0], pt[1]);
+    }
+
+    /**
+     * Draw leds as spheres at the given positions using the values as the colors.
+     * 
+     * @param {Vector3[]} positions - Positions of each LED
+     * @param {Uint8Array} values - Each 3 values correspond to the R,G,B values of one LED. `values.length` must equal `3*positions.length`.
+     * @param {number} [radii] - Radius of each LED
+     * @returns {void}
+     */
     drawLeds(positions, values, radii = 0.01) {
         for (let i = 0; i < positions.length; i++) {
             const color = 0xFF | values[i * 3 + 2] << 8 | values[i * 3 + 1] << 16 | values[i * 3 + 0] << 24;
@@ -846,32 +1016,31 @@ updateWs.onmessage = (evt) => {
 };
 
 /**
- * @typedef State
  * Mutable state that may be mutated by each animation tick.
  * `data` is of particular importance -- it will be sent to the server each frame.
  * The server will forward it to the microcontroller.
+ * 
+ * @typedef State
+ * @property {Uint8Array} data - bytes representing LED colors. Every 3 bytes correspond to the Red, Green, and Blue channels of an LED.
+ * The length of this `Uint8Array` should exactly match 3 times the total number of LEDs.
  */
-let state = {
-    /** 
-     * @type {Uint8Array} bytes representing LED colors. Every 3 bytes correspond to the Red, Green, and Blue channels of an LED.
-     * The length of this `Uint8Array` should exactly match 3 times the total number of LEDs.
-    */
+const state = {
     data: new Uint8Array(0),
     lineX: 0,
     animState: 0
 };
 
 /**
- * @typedef Mappings
+ * @typedef {Object} Mappings
  * Mappings that express the relationship between data points in different coordinate systems.
  * The length of each array should correspond to the total number of LEDs.
  */
 const mappings = {
-    /** @type {[x: number, y: number, z: number][]} array of data points in physical coordinates */
+    /** @type {Vector3[]} array of data points in physical coordinates */
     physical: [],
-    /** @type {[x: number, y: number, z: number][]} corresponding array of data points in normalized coordinates */
+    /** @type {Vector3[]} corresponding array of data points in normalized coordinates */
     normalized: [],
-    /** @type {[x: number, y: number, z: number][]} flat array of data points in normalized coordinates */
+    /** @type {Vector3[]} flat array of data points in normalized coordinates */
     normalizedFlat: []
 }
 
@@ -887,31 +1056,78 @@ Promise.all(
     state.data = new Uint8Array(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
 });
 
-// /**
-//  * Load the given mapping file containing physical coordinates.
-//  * Use it to initialize the nomalized mappings and the data `Uint8Array`.
-//  */
-// fetch(`http://${window.location.host}/mappings/mappingPersp.json`).then(async (value) => {
-//     const physical = await value.json();
-//     mappings.physical = physical;
-//     mappings.normalized = mapPointsToNormalizedCoords(physical);
-
-//     state.data = new Uint8Array(physical.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
-// });
-
-
 /** Circle constant -- radians in a full circle */
 const TAU = Math.PI * 2;
 
 // const UI = new UserInterface(ctx);
 
+/** @type {HTMLCanvasElement} */
+// @ts-ignore
+const canvas = document.getElementById('visualization');
+/** @type {CanvasRenderingContext2D} */
+const ctx = canvas.getContext('2d');
+// autoResize(ctx);
+
+/**
+ * @typedef {Object} Spaces
+ * @property {Space} Front
+ * @property {Space} Perspective
+ * @property {Space} Top
+ * @property {Space} GUI
+ * @property {Space} Frames
+ */
+const spaces = {
+    Front: new Space(ctx, 0, .5, 0.5, 0.5, -1, 1),
+    Perspective: new Space(ctx, 0.5, .5, 0.5, 0.5, -1, 1),
+    Top: new Space(ctx, 0, 0, 0.5, 0.5, -1, 1),
+    GUI: new Space(ctx, 0.5, 0, 0.5, 0.5, -1, 1),
+    Frames: new Space(ctx, 0, 0, 1, 1, -1, 1, /* squareAspect */ false),
+}
+
+/**
+ * Main animation loop
+ * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
+ */
+function mainLoop(elapsedMs) {
+    autoResize(ctx);
+    // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    spaces.Perspective.rotation[0] = Math.sin(elapsedMs * 0.001);// -Math.PI / 1.5;
+    spaces.Front.rotation[0] = -Math.PI / 2;
+    spaces.Front.updateViewMatrix();
+    spaces.Perspective.updateViewMatrix();
+    spaces.Top.updateViewMatrix();
+    spaces.GUI.updateViewMatrix();
+    spaces.Frames.updateViewMatrix();
+    spaces.Frames.background(0x333333FF);
+    
+    spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+    spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+    spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+    spaces.Front.text('Front', 12, [-0.9,0,0.9], {fill: 'white'});
+    spaces.Top.text('Top', 12, [-0.9,0,0.9], {fill: 'white'});
+    spaces.Perspective.text('Perspective', 12, [-0.9,0,0.9], {fill: 'white'});
+
+    const frames = spaces.Frames;
+    frames.rectXY([-1, -1, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([0, -1, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([0, 0, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([-1, 0, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
+
+    tick(elapsedMs, spaces, mappings, state);
+    // UI.onFrameEnd();
+    requestAnimationFrame(mainLoop);
+}
+requestAnimationFrame(mainLoop);
+
+
 /**
  * Animation tick function called repeatedly.
  * @param {number} elapsedMs Number of milliseconds elapsed since last tick
+ * @param {Spaces} spaces 
  * @param {Mappings} mappings 
  * @param {State} state 
  */
-function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
+function tick(elapsedMs, {Front, Perspective, Top, GUI }, mappings, state) {
     // Front.sphere([0, 0, 0], 0.1, { fill: 'red', stroke: 'green', thickness: 2 });
     // Front.sphere([0, 0, 0.2], 0.05, { fill: 'red', stroke: 'green', thickness: 2 });
 
@@ -936,11 +1152,15 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     Top.line([x, 0, 1], [x, 0, -1], { color: 'red', thickness: 6 });
 
 
-    Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { color: 0x000000FF, thickness: 1 });
+    Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
+
+    Top.text(`${mappings.normalizedFlat.length}`, 12, [0,0,0], {fill: 'white'});
+    Perspective.text(`${mappings.normalized.length}`, 12, [0,0,0], {fill: 'white'});
 
     Front.drawLeds(mappings.normalized, state.data);
     Top.drawLeds(mappings.normalizedFlat, state.data);
     Perspective.drawLeds(mappings.normalized, state.data);
+
     // const pixelsToNorm = 1 / ctx.canvas.clientHeight;
     // const bottom = -1;
     // const top = 1;
@@ -1056,48 +1276,3 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
         dataWs.send(state.data);
     }
 }
-
-/** @type HTMLCanvasElement */
-const canvas = document.getElementById('visualization');
-/** @type CanvasRenderingContext2D */
-const ctx = canvas.getContext('2d');
-// autoResize(ctx);
-
-const spaces = {
-    Front: new Space(ctx, 0, .5, 0.5, 0.5, -1, 1),
-    Perspective: new Space(ctx, 0.5, .5, 0.5, 0.5, -1, 1),
-    Top: new Space(ctx, 0, 0, 0.5, 0.5, -1, 1),
-    GUI: new Space(ctx, 0.5, 0, 0.5, 0.5, -1, 1),
-    Frames: new Space(ctx, 0, 0, 1, 1, -1, 1, /* squareAspect */ false),
-}
-
-/**
- * Main animation loop
- * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
- */
-function mainLoop(elapsedMs) {
-    autoResize(ctx);
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    spaces.Perspective.rotation[0] = Math.sin(elapsedMs * 0.001);// -Math.PI / 1.5;
-    spaces.Front.rotation[0] = -Math.PI / 2;
-    spaces.Front.updateViewMatrix();
-    spaces.Perspective.updateViewMatrix();
-    spaces.Top.updateViewMatrix();
-    spaces.GUI.updateViewMatrix();
-    spaces.Frames.updateViewMatrix();
-
-    spaces.Front.crosshairs([0, 0, 0], 1, { color: 0xFFFFFF, thickness: 0.5 });
-    spaces.Top.crosshairs([0, 0, 0], 1, { color: 0xFFFFFF, thickness: 0.5 });
-    spaces.Perspective.crosshairs([0, 0, 0], 1, { color: 0xFFFFFF, thickness: 0.5 });
-
-    const frames = spaces.Frames;
-    frames.rectXY([-1, -1, 0], 1, 1, { color: 0xFF, thickness: 2 });
-    frames.rectXY([0, -1, 0], 1, 1, { color: 0xFF, thickness: 2 });
-    frames.rectXY([0, 0, 0], 1, 1, { color: 0xFF, thickness: 2 });
-    frames.rectXY([-1, 0, 0], 1, 1, { color: 0xFF, thickness: 2 });
-
-    tick(elapsedMs, spaces, mappings, state);
-    // UI.onFrameEnd();
-    requestAnimationFrame(mainLoop);
-}
-requestAnimationFrame(mainLoop);
