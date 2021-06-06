@@ -2,39 +2,6 @@
 'use strict';
 
 /**
- * Computes the bounding box of a set of points, returning a 3d array where each element
- * is a 2d array containing the min and max extent of that dimension
- * @param {iVector3[]} dataPoints
- * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
- */
-function computeBoundingBox(dataPoints) {
-    // Initialize a bounding box that contains nothing:
-    /** @type {[number, number]} */
-    const minMaxX = [Infinity, -Infinity];
-    /** @type {[number, number]} */
-    const minMaxY = [Infinity, -Infinity];
-    /** @type {[number, number]} */
-    const minMaxZ = [Infinity, -Infinity];
-
-    // Loop through all the points and compute their
-    // minimum and maximum extents on every axis:
-    for (let i = 0; i < dataPoints.length; i++) {
-        const pt = dataPoints[i];
-        // Only allow the point to modify the extents if it is
-        // not alreay encompassed in the bounds
-        minMaxX[0] = Math.min(minMaxX[0], pt[0]);
-        minMaxX[1] = Math.max(minMaxX[1], pt[0]);
-
-        minMaxY[0] = Math.min(minMaxY[0], pt[1]);
-        minMaxY[1] = Math.max(minMaxY[1], pt[1]);
-
-        minMaxZ[0] = Math.min(minMaxZ[0], pt[2]);
-        minMaxZ[1] = Math.max(minMaxZ[1], pt[2]);
-    }
-    return [minMaxX, minMaxY, minMaxZ];
-}
-
-/**
  * Linearly interpolates between `a` and `b` via `t`.
  * Returns `a` if `t` is 0.
  * Returns `b` if `t` is 1.
@@ -44,7 +11,7 @@ function computeBoundingBox(dataPoints) {
  * @param {number} t
  * @returns {number} interpolated value
  */
-function lerp(a, b, t) {
+ function lerp(a, b, t) {
     return (1 - t) * a + t * b;
 }
 
@@ -76,6 +43,50 @@ function ilerp(a, b, v) {
  */
 function linMap(inStart, inEnd, outStart, outEnd, inValue) {
     return lerp(outStart, outEnd, ilerp(inStart, inEnd, inValue));
+}
+
+/**
+ * @param {number} x1
+ * @param {number} y1
+ * @param {number} x2
+ * @param {number} y2
+ * @returns {number} The distance between two points
+ */
+ function dist(x1, y1, x2, y2) {
+    return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+}
+
+/**
+ * Computes the bounding box of a set of points, returning a 3d array where each element
+ * is a 2d array containing the min and max extent of that dimension
+ * @param {iVector3[]} dataPoints
+ * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
+ */
+function computeBoundingBox(dataPoints) {
+    // Initialize a bounding box that contains nothing:
+    /** @type {[number, number]} */
+    const minMaxX = [Infinity, -Infinity];
+    /** @type {[number, number]} */
+    const minMaxY = [Infinity, -Infinity];
+    /** @type {[number, number]} */
+    const minMaxZ = [Infinity, -Infinity];
+
+    // Loop through all the points and compute their
+    // minimum and maximum extents on every axis:
+    for (let i = 0; i < dataPoints.length; i++) {
+        const pt = dataPoints[i];
+        // Only allow the point to modify the extents if it is
+        // not alreay encompassed in the bounds
+        minMaxX[0] = Math.min(minMaxX[0], pt[0]);
+        minMaxX[1] = Math.max(minMaxX[1], pt[0]);
+
+        minMaxY[0] = Math.min(minMaxY[0], pt[1]);
+        minMaxY[1] = Math.max(minMaxY[1], pt[1]);
+
+        minMaxZ[0] = Math.min(minMaxZ[0], pt[2]);
+        minMaxZ[1] = Math.max(minMaxZ[1], pt[2]);
+    }
+    return [minMaxX, minMaxY, minMaxZ];
 }
 
 /**
@@ -118,18 +129,6 @@ function autoResize(ctx) {
         canvas.height = desHeight;
     }
 }
-
-/**
- * @param {number} x1
- * @param {number} y1
- * @param {number} x2
- * @param {number} y2
- * @returns {number} The distance between two points
- */
-function dist(x1, y1, x2, y2) {
-    return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
-}
-
 
 // class UserInterface {
 //     /** @type {[x: number, y: number]} Position of the mouse in normalized coordinates. */
@@ -305,6 +304,11 @@ class Vector3 extends Array {
         return new Vector3(x, y, z);
     }
 
+    /**
+     * Returns a new vector with the same values as `vector`.
+     * @param {iVector3} vector 
+     * @returns {Vector3}
+     */
     static duplicate(vector) {
         return new Vector3(vector[0], vector[1], vector[1]);
     }
@@ -342,7 +346,7 @@ class Vector3 extends Array {
      * modifies it instead of creating a new vector. 
      * @param {iVector3} a 
      * @param {iVector3} b 
-     * @param {Vector3} [out]
+     * @param {Vector3} [out] - [OPTIONAL] modified if provided
      * @return {Vector3}
      */
     static add(a, b, out) {
@@ -365,11 +369,12 @@ class Vector3 extends Array {
     }
 
     /**
-     * Modifies `out` with the result of subtracting the components of
-     * the vector `b` from those of the vector `a`.
+     * Returns the result of adding the components of
+     * the vector `b` from the corresponding components of `a`. 
+     * If `out` is provided, modifies it instead of creating a new vector.
      * @param {iVector3} a 
      * @param {iVector3} b 
-     * @param {Vector3} [out] 
+     * @param {Vector3} [out] - [OPTIONAL] modified if provided
      */
     static subtract(a, b, out) {
         if (out === undefined) {
@@ -391,11 +396,11 @@ class Vector3 extends Array {
     }
 
     /**
-     * Modifies `out` with the result of multiplying the components of
-     * the vector `a` with `multiplier`.
+     * Returns the vector formed by scaling `a` by `multiplier`.
+     * If `out` is provided, modifies it instead of creating a new vector.
      * @param {iVector3} a 
      * @param {number} multiplier 
-     * @param {Vector3} [out]
+     * @param {Vector3} [out] - [OPTIONAL] modified if provided
      */
     static scaled(a, multiplier, out) {
         if (out === undefined) {
@@ -424,7 +429,7 @@ class Vector3 extends Array {
      * If `vector` is the zero vector, sets `out` to the zero vector
      * instead of normalizing.
      * @param {iVector3} vector
-     * @param {Vector3} [out]
+     * @param {Vector3} [out] - [OPTIONAL] modified if provided
      * @returns {Vector3}
      */
     static normalize(vector, out) {
@@ -658,7 +663,7 @@ class Matrix4x4 extends Array {
     /**
      * Returns a copy of this matrix. If `out` is provided,
      * modifies it rather than creating a new matrix.
-     * @param {Matrix4x4} [out]
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
      * @returns {Matrix4x4}
      */
     duplicated(out) {
@@ -769,10 +774,10 @@ class Matrix4x4 extends Array {
 
     /**
      * Multiplies the `matrix` with `vector`, transforming the vector by the matrix.
-     * If `out` is supplied, overwrites it to store the result.
+     * If `out` is supplied, modifies it to store the result.
      * @param {Matrix4x4} matrix
      * @param {iVector3} vector
-     * @param {Vector3} [out] - if present, overwritten with the result
+     * @param {Vector3} [out] - [OPTIONAL] modified if provided
      * @returns {Vector3}
      */
     static multiplyVector3(matrix, vector, out) {
@@ -867,10 +872,10 @@ class Matrix4x4 extends Array {
      * axis by `radians`. If `out` is provided, overwrites it
      * rather than creating a new matrix.
      * @param {number} radians - Angle to rotate by
-     * @param {Matrix4x4} [out]
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
      * @returns {Matrix4x4}
      */
-     static fromZRotation(radians, out) {
+    static fromZRotation(radians, out) {
         if (out === undefined) {
             out = Matrix4x4.identity();    
         }
@@ -880,6 +885,60 @@ class Matrix4x4 extends Array {
             0, 0, 1, 0,
             0, 0, 0, 1);
         return out;
+    }
+
+    /**
+     * Returns the matrix resulting from rotating 
+     * `mat` by `radians` around the x axis.
+     * If `out` is provided, overwrites it
+     * rather than creating a new matrix.
+     * @param {Matrix4x4} mat - matrix to rotate
+     * @param {number} radians - Angle to rotate by
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
+     * @returns {Matrix4x4}
+     */
+    static rotatedByX(mat, radians, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        const rotMat = Matrix4x4.fromXRotation(radians, Matrix4x4.__temp);
+        return Matrix4x4.multiply(mat, rotMat, out);
+    }
+
+    /**
+     * Returns the matrix resulting from rotating 
+     * `mat` by `radians` around the y axis.
+     * If `out` is provided, overwrites it
+     * rather than creating a new matrix.
+     * @param {Matrix4x4} mat - matrix to rotate
+     * @param {number} radians - Angle to rotate by
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
+     * @returns {Matrix4x4}
+     */
+    static rotatedByY(mat, radians, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        const rotMat = Matrix4x4.fromYRotation(radians, Matrix4x4.__temp);
+        return Matrix4x4.multiply(mat, rotMat, out);
+    }
+
+    /**
+     * Returns the matrix resulting from rotating 
+     * `mat` by `radians` around the z axis.
+     * If `out` is provided, overwrites it
+     * rather than creating a new matrix.
+     * @param {Matrix4x4} mat - matrix to rotate
+     * @param {number} radians - Angle to rotate by
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
+     * @returns {Matrix4x4}
+     */
+    static rotatedByZ(mat, radians, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        const rotMat = Matrix4x4.fromZRotation(radians, Matrix4x4.__temp);
+        return Matrix4x4.multiply(mat, rotMat, out);
     }
 }
 /**
@@ -928,7 +987,7 @@ class Space {
 
         this.scale = Vector3.create(1, 1, 1);
         this.translation = Vector3.create(0, 0, 0);
-        this.rotation = Vector3.create(0, 0, 0);
+        this.rotationMatrix = Matrix4x4.identity();
         this.matrix = Matrix4x4.identity();
 
         this.__tempP1 = Vector3.zero();
@@ -1018,20 +1077,7 @@ class Space {
             0, 0, this.scale[2], this.translation[2],
             0, 0, 0, 1);
 
-        const rot = this.rotation;
-        let rotMat = Matrix4x4.identity();
-        rotMat = rotMat.rotX(rot[0]);
-        rotMat = rotMat.rotY(rot[1]);
-        rotMat = rotMat.rotZ(rot[2]);
-
-        // const transMat = Matrix4x4.create(
-        //     1, 0, 0, this.translation[0],
-        //     0, 1, 0, this.translation[1],
-        //     0, 0, 1, this.translation[2],
-        //     0, 0, 0, 1);
-
-        // this.matrix = transMat.times(scaleMat).times(rotMat);
-        this.matrix = (this.matrix).times(rotMat);
+        this.matrix = (this.matrix).times(this.rotationMatrix);
     }
 
     /**
@@ -1263,6 +1309,28 @@ class Space {
             this.sphere(positions[i], radii, { fill: color, stroke: null });
         }
     }
+
+    setSpaceRotationMatrix(rotationMatrix) {
+        Matrix4x4.copy(rotationMatrix, this.rotationMatrix);
+    }
+
+    setSpaceRotation(xRadians, yRadians, zRadians) {
+        Matrix4x4.fromXRotation(xRadians, this.rotationMatrix);
+        Matrix4x4.rotatedByY(this.rotationMatrix, yRadians, this.rotationMatrix);
+        Matrix4x4.rotatedByZ(this.rotationMatrix, zRadians, this.rotationMatrix);
+    }
+
+    rotateX(radians) {
+        Matrix4x4.rotatedByX(this.rotationMatrix, radians, this.rotationMatrix);
+    }
+
+    rotateY(radians) {
+        Matrix4x4.rotatedByY(this.rotationMatrix, radians, this.rotationMatrix);
+    }
+
+    rotateZ(radians) {
+        Matrix4x4.rotatedByZ(this.rotationMatrix, radians, this.rotationMatrix);
+    }
 }
 
 
@@ -1417,8 +1485,8 @@ const spaces = new Spaces(ctx);
 function mainLoop(elapsedMs) {
     autoResize(ctx);
     // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    spaces.Perspective.rotation[0] = Math.sin(elapsedMs * 0.001);// -Math.PI / 1.5;
-    spaces.Front.rotation[0] = -Math.PI / 2;
+    spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
+    spaces.Front.setSpaceRotation(-Math.PI / 2, 0, 0);
     spaces.Front.updateViewMatrix();
     spaces.Perspective.updateViewMatrix();
     spaces.Top.updateViewMatrix();
