@@ -4,7 +4,7 @@
 /**
  * Computes the bounding box of a set of points, returning a 3d array where each element
  * is a 2d array containing the min and max extent of that dimension
- * @param {Vector3[]} dataPoints
+ * @param {iVector3[]} dataPoints
  * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
  */
 function computeBoundingBox(dataPoints) {
@@ -81,8 +81,8 @@ function linMap(inStart, inEnd, outStart, outEnd, inValue) {
 /**
  * Given some data points, converts them to points in a normalized coordinate space.
  * such that the max values are at 1 or -1.
- * @param {Vector3[]} dataPoints
- * @returns {Vector3[]}
+ * @param {iVector3[]} dataPoints
+ * @returns {[x: number, y: number, z: number][]}
  */
 function mapPointsToNormalizedCoords(dataPoints) {
     const bounds = computeBoundingBox(dataPoints);
@@ -95,11 +95,10 @@ function mapPointsToNormalizedCoords(dataPoints) {
     }
     const scaleFactor = 1 / maxBoundValue;
 
-    /** @type {Vector3[]} */
     const normalizedPoints = [];
     for (let i = 0; i < dataPoints.length; i++) {
         const pt = dataPoints[i];
-        /** @type {Vector3} */
+        /** @type {[x: number, y: number, z: number]} */
         const scaledPt = [pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor];
         normalizedPoints.push(scaledPt);
     }
@@ -376,6 +375,10 @@ function dist(x1, y1, x2, y2) {
 //     }
 // }
 
+/**
+ * @typedef {[x: number, y: number, z: number]|Vector3|Array<number, 3>} iVector3
+ */
+
 class Vector3 extends Array {
     /** 
      * @private
@@ -391,7 +394,14 @@ class Vector3 extends Array {
     }
 
     /**
-     * Create a vector
+     * Creates and returns a 3d vector filled with the passed parameters.
+     * 
+     * ```
+     * |x|
+     * |y|
+     * |z|
+     * ```
+     * 
      * @param {number} x - X coordinate of the new vector
      * @param {number} y - Y coordinate of the new vector
      * @param {number} z - Z coordinate of the new vector
@@ -401,17 +411,149 @@ class Vector3 extends Array {
         return new Vector3(x, y, z);
     }
 
+    static duplicate(vector) {
+        return new Vector3(vector[0], vector[1], vector[1]);
+    }
+
     /**
-     * Create an empty vector
+     * Sets the vector to have the given x,y,z values.
+     * @param {number} x 
+     * @param {number} y 
+     * @param {number} z 
+     */
+    setValues(x, y, z) {
+        this[0] = x;
+        this[1] = y;
+        this[2] = z;
+    }
+
+    /**
+     * Create and returns a 3d zero vector:
+     * 
+     * ```
+     * |0|
+     * |0|
+     * |0|
+     * ```
+     * 
      * @returns {Vector3} - A new zero vector
      */
     static zero() {
         return new Vector3(0, 0, 0);
     }
+
+    /**
+     * Modifies `out` with the result of adding the components of
+     * the vectors `a` and `b`.
+     * @param {iVector3} a 
+     * @param {iVector3} b 
+     * @param {Vector3} [out]
+     * @return {Vector3}
+     */
+    static add(a, b, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = a[0] + b[0];
+        out[1] = a[1] + b[1];
+        out[2] = a[2] + b[2];
+        return out;
+    }
+
+    /**
+     * Modifies `out` with the result of subtracting the components of
+     * the vector `b` from those of the vector `a`.
+     * @param {iVector3} a 
+     * @param {iVector3} b 
+     * @param {Vector3} [out] 
+     */
+    static subtract(a, b, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = a[0] - b[0];
+        out[1] = a[1] - b[1];
+        out[2] = a[2] - b[2];
+        return out;
+    }
+
+    /**
+     * Modifies `out` with the result of multiplying the components of
+     * the vector `a` with `multiplier`.
+     * @param {iVector3} a 
+     * @param {number} multiplier 
+     * @param {Vector3} [out]
+     */
+    static scaled(a, multiplier, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = a[0] * multiplier;
+        out[1] = a[1] * multiplier;
+        out[2] = a[2] * multiplier;
+        return out;
+    }
+
+    /**
+     * Modifies `out` to be the normalized form of `vector`.
+     * `out` will have a magnitude of 1
+     * and point in the same direction as `this`.
+     * 
+     * If `vector` is the zero vector, sets `out` to the zero vector
+     * instead of normalizing.
+     * @param {iVector3} vector
+     * @param {Vector3} [out]
+     * @returns {Vector3}
+     */
+    static normalize(vector, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const divisor = 1/Vector3.magnitude(vector);
+        if (Number.isFinite(divisor)) {
+            return Vector3.scaled(vector, 1/Vector3.magnitude(vector), out);
+        } else {
+            out[0] = 0;
+            out[1] = 0;
+            out[2] = 0;
+        }
+    }
+
+    /**
+     * Returns a normalized copy of `this` vector.
+     * The returned vector will have a magnitude of 1
+     * and point in the same direction as `this`.
+     * 
+     * If `this` is the zero vector, returns a zero vector
+     * instead of normalizing.
+     * @returns {Vector3}
+     */
+    normalized() {
+        return Vector3.normalize(this);
+    }
+
+    /**
+     * Returns the length of `vector`.
+     * @param {iVector3} vector
+     * @returns {number}
+     */
+    static magnitude(vector) {
+        return Math.sqrt(vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2]);
+    }
+
+    /**
+     * Returns the squared length of `vector`.
+     * @param {iVector3} vector
+     * @returns {number}
+     */
+    static sqrMagnitude(vector) {
+        return vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2];
+    }
 }
 
 class Matrix4x4 extends Array {
     /**
+     * @private
      * @param {number} m11 
      * @param {number} m12 
      * @param {number} m13 
@@ -434,28 +576,24 @@ class Matrix4x4 extends Array {
         m31, m32, m33, m34,
         m41, m42, m43, m44) {
         super(16);
-        this[0] = m11;
-        this[1] = m21;
-        this[2] = m31;
-        this[3] = m41;
-
-        this[4] = m12;
-        this[5] = m22;
-        this[6] = m32;
-        this[7] = m42;
-
-        this[8] = m13;
-        this[9] = m23;
-        this[10] = m33;
-        this[11] = m43;
-
-        this[12] = m14;
-        this[13] = m24;
-        this[14] = m34;
-        this[15] = m44;
+        this.setValues(m11, m12, m13, m14,
+            m21, m22, m23, m24,
+            m31, m32, m33, m34,
+            m41, m42, m43, m44);
     }
 
     /**
+     * Creates a new matrix initialized with the
+     * passed parameters.
+     * Matrix will have the form:
+     * 
+     * ```
+     * | m11 m12 m13 m14 |
+     * | m21 m22 m23 m24 |
+     * | m31 m32 m33 m34 |
+     * | m41 m42 m43 m44 |
+     * ```
+     *
      * @param {number} m11 
      * @param {number} m12 
      * @param {number} m13 
@@ -485,37 +623,135 @@ class Matrix4x4 extends Array {
     }
 
     /**
+     * Modifies every value of the matrix
+     * to match the parameters passed in.
+     * Matrix will have the form:
+     * 
+     * ```
+     * | m11 m12 m13 m14 |
+     * | m21 m22 m23 m24 |
+     * | m31 m32 m33 m34 |
+     * | m41 m42 m43 m44 |
+     * ```
+     *
+     * @param {number} m11 
+     * @param {number} m12 
+     * @param {number} m13 
+     * @param {number} m14 
+     * @param {number} m21 
+     * @param {number} m22 
+     * @param {number} m23 
+     * @param {number} m24 
+     * @param {number} m31 
+     * @param {number} m32 
+     * @param {number} m33 
+     * @param {number} m34 
+     * @param {number} m41 
+     * @param {number} m42 
+     * @param {number} m43 
+     * @param {number} m44 
+     * @returns {void}
+     */
+    setValues(m11, m12, m13, m14,
+        m21, m22, m23, m24,
+        m31, m32, m33, m34,
+        m41, m42, m43, m44) {
+        this[0] = m11;
+        this[1] = m21;
+        this[2] = m31;
+        this[3] = m41;
+
+        this[4] = m12;
+        this[5] = m22;
+        this[6] = m32;
+        this[7] = m42;
+
+        this[8] = m13;
+        this[9] = m23;
+        this[10] = m33;
+        this[11] = m43;
+
+        this[12] = m14;
+        this[13] = m24;
+        this[14] = m34;
+        this[15] = m44;
+    }
+
+    /**
      * Create a new identity matrix. When multiplying
      * the identity matrix with a vector, the vector is unchanged.
      * When multiplying identity matrix with another matrix, the matrix is unchanged.
+     * 
+     * The identity matrix looks like this:
+     * ```
+     * | 1 0 0 0 |
+     * | 0 1 0 0 |
+     * | 0 0 1 0 |
+     * | 0 0 0 1 |
+     * ```
+     * 
      * @returns {Matrix4x4} - The identity matrix
      */
     static identity() {
-        return new Matrix4x4(1, 0, 0, 0,
+        return new Matrix4x4(
+            1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1);
     }
 
     /**
-     * Multiply `a` and `b` together, returning a new matrix.
-     * Note that the order in which you multiply matrices together changes the outcome.
-     * @param {Matrix4x4} a 
-     * @param {Matrix4x4} b 
+     * Returns a copy of `matrix`. If `out` is provided,
+     * modifies it rather than creating a new matrix.
+     * @param {Matrix4x4} matrix 
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
      * @returns {Matrix4x4}
      */
-    static multiply(a, b) {
-        const c = Matrix4x4.identity();
+    static copy(matrix, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        for (let i = 0; i < 16; i++) {
+            out[i] = matrix[i];
+        }
+        return out;
+    }
+
+    /**
+     * Returns a copy of this matrix. If `out` is provided,
+     * modifies it rather than creating a new matrix.
+     * @param {Matrix4x4} [out]
+     * @returns {Matrix4x4}
+     */
+    duplicated(out) {
+        return Matrix4x4.copy(this, out);
+    }
+
+    /**
+     * Returns the result of multiplying `a` and `b` together.
+     * Note that the order in which you multiply matrices together changes the outcome.
+     * If `out` is provided, modifies it rather than creating a new matrix.
+     * @param {Matrix4x4} a 
+     * @param {Matrix4x4} b 
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
+     * @returns {Matrix4x4}
+     */
+    static multiply(a, b, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        const res = Matrix4x4.__temp;
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 let cij = 0;
                 for (let k = 0; k < 4; k++) {
                     cij += a[i + k * 4] * b[k + j * 4];
                 }
-                c[i + j * 4] = cij;
+                res[i + j * 4] = cij;
             }
         }
-        return c;
+        Matrix4x4.copy(res, out);
+        return out;
     }
 
     /**
@@ -584,30 +820,66 @@ class Matrix4x4 extends Array {
 
     /**
      * Multiplies the matrix with a vector `vec`, transforming the vector by the matrix.
-     * @param {Vector3} vec
+     * @param {iVector3} vector
      * @returns {Vector3}
      */
-    timesVector3([x, y, z]) {
+    timesVector3(vector) {
         const res = Vector3.zero();
-        const w = 1;
-        for (let i = 0; i < 3; i++) {
-            res[i] = this[i + 0 * 4] * x + this[i + 1 * 4] * y + this[i + 2 * 4] * z + this[i + 3 * 4] * w;
-        }
+        Matrix4x4.multiplyVector3(this, vector, /* out */res);
         return res;
     }
 
     /**
+     * Multiplies the `matrix` with `vector`, transforming the vector by the matrix.
+     * If `out` is supplied, overwrites it to store the result.
+     * @param {Matrix4x4} matrix
+     * @param {iVector3} vector
+     * @param {Vector3} [out] - if present, overwritten with the result
+     * @returns {Vector3}
+     */
+    static multiplyVector3(matrix, vector, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const x = vector[0];
+        const y = vector[1];
+        const z = vector[2];
+        const w = 1;
+        for (let i = 0; i < 3; i++) {
+            out[i] = matrix[i + 0 * 4] * x + matrix[i + 1 * 4] * y + matrix[i + 2 * 4] * z + matrix[i + 3 * 4] * w;
+        }
+        return out;
+    }
+
+    /**
      * Returns a new matrix formed by rotating `this` around the x axis by `radians`.
-     * @param {number} radians
+     * @param {number} radians - Angle to rotate by
      * @returns {Matrix4x4}
      */
     rotX(radians) {
-        const mat = Matrix4x4.create(
+        const mat = Matrix4x4.__temp;
+        Matrix4x4.fromXRotation(radians, mat);
+        return Matrix4x4.multiply(this, mat);
+    }
+
+    /**
+     * Returns a rotation matrix that rotates around the x
+     * axis by `radians`. If `out` is provided, modifies it
+     * rather than creating a new matrix.
+     * @param {number} radians - Angle to rotate by
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
+     * @returns {Matrix4x4}
+     */
+    static fromXRotation(radians, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        out.setValues(
             1, 0, 0, 0,
             0, Math.cos(radians), -Math.sin(radians), 0,
             0, Math.sin(radians), Math.cos(radians), 0,
             0, 0, 0, 1);
-        return this.times(mat);
+        return out;
     }
 
     /**
@@ -616,28 +888,70 @@ class Matrix4x4 extends Array {
      * @returns {Matrix4x4}
      */
     rotY(radians) {
-        const mat = Matrix4x4.create(
+        const mat = Matrix4x4.__temp;
+        Matrix4x4.fromYRotation(radians, mat);
+        return Matrix4x4.multiply(this, mat);
+    }
+
+    /**
+     * Returns a rotation matrix that rotates around the z
+     * axis by `radians`. If `out` is provided, modifies it
+     * rather than creating a new matrix.
+     * @param {number} radians - Angle to rotate by
+     * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
+     * @returns {Matrix4x4}
+     */
+     static fromYRotation(radians, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
+        out.setValues(
             Math.cos(radians), 0, Math.sin(radians), 0,
             0, 1, 0, 0,
             -Math.sin(radians), 0, Math.cos(radians), 0,
             0, 0, 0, 1);
-        return this.times(mat);
+        return out;
     }
 
     /**
      * Returns a new matrix formed by rotating `this` around the z axis by `radians`.
-     * @param {number} radians
+     * @param {number} radians - Angle to rotate by
      * @returns {Matrix4x4}
      */
     rotZ(radians) {
-        const mat = Matrix4x4.create(
+        const mat = Matrix4x4.__temp;
+        Matrix4x4.fromZRotation(radians, mat);
+        return Matrix4x4.multiply(this, mat);
+    }
+
+    /**
+     * Returns a rotation matrix that rotates around the z
+     * axis by `radians`. If `out` is provided, overwrites it
+     * rather than creating a new matrix.
+     * @param {number} radians - Angle to rotate by
+     * @param {Matrix4x4} [out]
+     * @returns {Matrix4x4}
+     */
+     static fromZRotation(radians, out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();    
+        }
+        out.setValues(
             Math.cos(radians), -Math.sin(radians), 0, 0,
             Math.sin(radians), Math.cos(radians), 0, 0,
             0, 0, 1, 0,
             0, 0, 0, 1);
-        return this.times(mat);
+        return out;
     }
 }
+/**
+ * @private
+ * DO NOT USE.
+ * Internal temporary matrix used to reduce
+ * allocations when doing matrix math.
+ */
+// @ts-ignore
+Matrix4x4.__temp = Matrix4x4.identity();
 
 class Space {
     /**
@@ -677,6 +991,10 @@ class Space {
         this.scale = Vector3.create(1, 1, 1);
         this.translation = Vector3.create(0, 0, 0);
         this.rotation = Vector3.create(0, 0, 0);
+        this.matrix = Matrix4x4.identity();
+
+        this.__tempP1 = Vector3.zero();
+        this.__tempP2 = Vector3.zero();
 
         this.updateViewMatrix();
     }
@@ -756,7 +1074,7 @@ class Space {
         this.translation[0] = canvas.width * this.screenWidth * spaceOffset + left;
         this.translation[1] = canvas.height - (canvas.height * this.screenHeight * spaceOffset + top);
         this.translation[2] = 0;
-        const scaleMat = Matrix4x4.create(
+        this.matrix.setValues(
             this.scale[0], 0, 0, this.translation[0],
             0, this.scale[1], 0, this.translation[1],
             0, 0, this.scale[2], this.translation[2],
@@ -768,14 +1086,14 @@ class Space {
         rotMat = rotMat.rotY(rot[1]);
         rotMat = rotMat.rotZ(rot[2]);
 
-        const transMat = Matrix4x4.create(
-            1, 0, 0, this.translation[0],
-            0, 1, 0, this.translation[1],
-            0, 0, 1, this.translation[2],
-            0, 0, 0, 1);
+        // const transMat = Matrix4x4.create(
+        //     1, 0, 0, this.translation[0],
+        //     0, 1, 0, this.translation[1],
+        //     0, 0, 1, this.translation[2],
+        //     0, 0, 0, 1);
 
         // this.matrix = transMat.times(scaleMat).times(rotMat);
-        this.matrix = (scaleMat).times(rotMat);
+        this.matrix = (this.matrix).times(rotMat);
     }
 
     /**
@@ -806,8 +1124,9 @@ class Space {
 
         const mat = this.matrix;
         const ctx = this.ctx;
-        const a = mat.timesVector3(pt1);
-        const b = mat.timesVector3(pt2);
+
+        const a = Matrix4x4.multiplyVector3(mat, pt1, /* out */this.__tempP1);
+        const b = Matrix4x4.multiplyVector3(mat, pt2, /* out */this.__tempP2);
         ctx.strokeStyle = this._canvasColor(color);
         ctx.lineWidth = thickness;
         ctx.beginPath();
@@ -819,7 +1138,7 @@ class Space {
     /**
      * Draw 3d crosshairs.
      * 
-     * @param {Vector3} centerPt - Center of the crosshairs.
+     * @param {iVector3} centerPt - Center of the crosshairs.
      * @param {number} radius - Radius of the crosshairs.
      * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
      * @param {string|number} [style.color] - Color of the crosshair lines
@@ -854,7 +1173,7 @@ class Space {
     /**
      * Draw a rectangle in the xy plane.
      * 
-     * @param {Vector3} cornerPt - Center of the crosshairs.
+     * @param {iVector3} cornerPt - Center of the crosshairs.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
@@ -879,7 +1198,7 @@ class Space {
     /**
      * Draw a polygon via the given points.
      * 
-     * @param {Vector3[]} points - Points of the polygon
+     * @param {iVector3[]} points - Points of the polygon
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
      * @param {string|number|null} [style.fill] - Fill color of the polygon. `null` for no fill.
      * @param {string|number|null} [style.stroke] - Stroke color of the polygon. `null` for no stroke.
@@ -894,11 +1213,11 @@ class Space {
         if (points.length > 0) {
             const mat = this.matrix;
             const ctx = this.ctx;
-            const start = mat.timesVector3(points[0]);
+            const start = Matrix4x4.multiplyVector3(mat, points[0], /* out */this.__tempP1);
             ctx.beginPath();
             ctx.moveTo(start[0], start[1]);
             for (let i = 1; i < points.length; i++) {
-                const pt = mat.timesVector3(points[i]);
+                const pt = Matrix4x4.multiplyVector3(mat, points[i], /* out */this.__tempP1);
                 ctx.lineTo(pt[0], pt[1]);
             }
             ctx.closePath();
@@ -917,7 +1236,7 @@ class Space {
     /**
      * Draw a sphere.
      * 
-     * @param {Vector3} centerPt - Center of the sphere
+     * @param {iVector3} centerPt - Center of the sphere
      * @param {number} radius - Radius of the sphere
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
      * @param {string|number|null} [style.fill] - Fill color of the sphere. `null` for no fill.
@@ -932,7 +1251,7 @@ class Space {
 
         const mat = this.matrix;
         const ctx = this.ctx;
-        const pt = mat.timesVector3(centerPt);
+        const pt = Matrix4x4.multiplyVector3(mat, centerPt, /* out */this.__tempP1);
         const scaleX = Math.abs(this.scale[0]);
         const scaleY = Math.abs(this.scale[1]);
         ctx.beginPath();
@@ -953,7 +1272,7 @@ class Space {
      * 
      * @param {string} text - The text to display
      * @param {number} size - Size of the text
-     * @param {Vector3} position - Position of the text
+     * @param {iVector3} position - Position of the text
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
      * @param {string|number} [style.fill] - Fill color of the text.
      * @returns {void}
@@ -963,7 +1282,7 @@ class Space {
 
         const mat = this.matrix;
         const ctx = this.ctx;
-        const pt = mat.timesVector3(position);
+        const pt = Matrix4x4.multiplyVector3(mat, position, /* out */this.__tempP1);
 
         const scaleX = Math.abs(this.scale[0]) * 0.01;
 
@@ -975,7 +1294,7 @@ class Space {
     /**
      * Draw leds as spheres at the given positions using the values as the colors.
      * 
-     * @param {Vector3[]} positions - Positions of each LED
+     * @param {iVector3[]} positions - Positions of each LED
      * @param {Uint8Array} values - Each 3 values correspond to the R,G,B values of one LED. `values.length` must equal `3*positions.length`.
      * @param {number} [radii] - Radius of each LED
      * @returns {void}
@@ -1039,11 +1358,11 @@ const state = {
  * The length of each array should correspond to the total number of LEDs.
  */
 const mappings = {
-    /** @type {Vector3[]} array of data points in physical coordinates */
+    /** @type {iVector3[]} array of data points in physical coordinates */
     physical: [],
-    /** @type {Vector3[]} corresponding array of data points in normalized coordinates */
+    /** @type {iVector3[]} corresponding array of data points in normalized coordinates */
     normalized: [],
-    /** @type {Vector3[]} flat array of data points in normalized coordinates */
+    /** @type {iVector3[]} flat array of data points in normalized coordinates */
     normalizedFlat: []
 }
 
@@ -1065,11 +1384,10 @@ const TAU = Math.PI * 2;
 // const UI = new UserInterface(ctx);
 
 /** @type {HTMLCanvasElement} */
-// @ts-ignore
-const canvas = document.getElementById('visualization');
+const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
 /** @type {CanvasRenderingContext2D} */
 const ctx = canvas.getContext('2d');
-// autoResize(ctx);
+autoResize(ctx);
 
 /**
  * @typedef {Object} Spaces
