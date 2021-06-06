@@ -652,26 +652,26 @@ class Space {
      * @param {number} screenY
      * @param {number} screenWidth
      * @param {number} screenHeight
-     * @param {number} initialYmin - initial minimum y value at the bottom of the space
-     * @param {number} initialYmax - initial maximum y value at the top of the space
+     * @param {number} initialSpaceMin - initial minimum value at the edge of the space
+     * @param {number} initialSpaceMax - initial maximum value at the edge of the space
      * @param {boolean} squareAspect - should the space be square? Defaults to `true`.
      */
     constructor(
-            ctx, 
-            screenX, 
-            screenY, 
-            screenWidth, 
-            screenHeight, 
-            initialYmin = -1, 
-            initialYmax = -1, 
-            squareAspect = true) {
+        ctx,
+        screenX,
+        screenY,
+        screenWidth,
+        screenHeight,
+        initialSpaceMin = -1,
+        initialSpaceMax = -1,
+        squareAspect = true) {
         this.ctx = ctx;
         this.screenX = screenX;
         this.screenY = screenY;
         this.screenWidth = screenWidth;
         this.screenHeight = screenHeight;
-        this.initialYmin = initialYmin;
-        this.initialYmax = initialYmax;
+        this.initialSpaceMin = initialSpaceMin;
+        this.initialSpaceMax = initialSpaceMax;
         this.squareAspect = squareAspect;
 
         this.scale = Vector3.create(1, 1, 1);
@@ -747,17 +747,19 @@ class Space {
         const xDim = this.squareAspect ? minDim : canvas.width;
         const yDim = this.squareAspect ? minDim : canvas.height;
         const zDim = this.squareAspect ? minDim : canvas.height;
+        const spaceDif = this.initialSpaceMax - this.initialSpaceMin;
+        const spaceOffset = ilerp(this.initialSpaceMin, this.initialSpaceMax, 0);
 
-        this.scale[0] = (xDim / ((this.initialYmax - this.initialYmin))) * this.screenWidth;
-        this.scale[1] = -(yDim / ((this.initialYmax - this.initialYmin))) * this.screenHeight;
-        this.scale[2] = zDim / (this.initialYmax - this.initialYmin);
-        this.translation[0] = (canvas.width / (this.initialYmax - this.initialYmin) * this.screenWidth + left);
-        this.translation[1] = canvas.height - (canvas.height / (this.initialYmax - this.initialYmin) * this.screenHeight + top);
+        this.scale[0] = (xDim / spaceDif) * this.screenWidth;
+        this.scale[1] = -(yDim / spaceDif) * this.screenHeight;
+        this.scale[2] = zDim / spaceDif;
+        this.translation[0] = canvas.width * this.screenWidth * spaceOffset + left;
+        this.translation[1] = canvas.height - (canvas.height * this.screenHeight * spaceOffset + top);
         this.translation[2] = 0;
         const scaleMat = Matrix4x4.create(
-            this.scale[0], 0, 0, 0,
-            0, this.scale[1], 0, 0,
-            0, 0, this.scale[2], 0,
+            this.scale[0], 0, 0, this.translation[0],
+            0, this.scale[1], 0, this.translation[1],
+            0, 0, this.scale[2], this.translation[2],
             0, 0, 0, 1);
 
         const rot = this.rotation;
@@ -772,7 +774,8 @@ class Space {
             0, 0, 1, this.translation[2],
             0, 0, 0, 1);
 
-        this.matrix = transMat.times(scaleMat).times(rotMat);
+        // this.matrix = transMat.times(scaleMat).times(rotMat);
+        this.matrix = (scaleMat).times(rotMat);
     }
 
     /**
@@ -798,8 +801,8 @@ class Space {
      * @returns {void}
      */
     line(pt1, pt2, style = {}) {
-        const color = style.color === undefined? null : style.color;
-        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+        const color = style.color === undefined ? null : style.color;
+        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -824,8 +827,8 @@ class Space {
      * @returns {void}
      */
     crosshairs(centerPt, radius, style = {}) {
-        const color = style.color === undefined? null : style.color;
-        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+        const color = style.color === undefined ? null : style.color;
+        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
 
         this.line([centerPt[0] - radius, centerPt[1], centerPt[2]],
             [centerPt[0] + radius, centerPt[1], centerPt[2]], { color, thickness });
@@ -836,16 +839,16 @@ class Space {
     }
 
     axes(radius, textSize, style = {}) {
-        const stroke = style.stroke === undefined? null : style.stroke;
-        const fill = style.fill === undefined? 'white' : style.fill;
-        const thickness = style.thickness === undefined? 0xFF : style.thickness;
-        this.crosshairs([0,0,0], radius, {color: stroke, thickness});
-        this.text(`+X`, textSize, [radius*0.9, 0, 0], {fill});
-        this.text(`-X`, textSize, [-radius*0.9, 0, 0], {fill});
-        this.text(`+Y`, textSize, [0, radius*0.9, 0], {fill});
-        this.text(`-Y`, textSize, [0, -radius*0.9, 0], {fill});
-        this.text(`+Z`, textSize, [0, 0, radius*0.9], {fill});
-        this.text(`-Z`, textSize, [0, 0, -radius*0.9], {fill});
+        const stroke = style.stroke === undefined ? null : style.stroke;
+        const fill = style.fill === undefined ? 'white' : style.fill;
+        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        this.crosshairs([0, 0, 0], radius, { color: stroke, thickness });
+        this.text(`+X`, textSize, [radius * 0.9, 0, 0], { fill });
+        this.text(`-X`, textSize, [-radius * 0.9, 0, 0], { fill });
+        this.text(`+Y`, textSize, [0, radius * 0.9, 0], { fill });
+        this.text(`-Y`, textSize, [0, -radius * 0.9, 0], { fill });
+        this.text(`+Z`, textSize, [0, 0, radius * 0.9], { fill });
+        this.text(`-Z`, textSize, [0, 0, -radius * 0.9], { fill });
     }
 
     /**
@@ -861,12 +864,12 @@ class Space {
      * @returns {void}
      */
     rectXY(cornerPt, width, height, style = {}) {
-        style.fill = style.fill === undefined? null : style.fill;
-        style.stroke = style.stroke === undefined? 0xFF : style.stroke;
-        style.thickness = style.thickness === undefined? 0xFF : style.thickness;
+        style.fill = style.fill === undefined ? null : style.fill;
+        style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        style.thickness = style.thickness === undefined ? 0xFF : style.thickness;
 
         this.polygon([
-            cornerPt, 
+            cornerPt,
             [cornerPt[0], cornerPt[1] + height, cornerPt[2]],
             [cornerPt[0] + width, cornerPt[1] + height, cornerPt[2]],
             [cornerPt[0] + width, cornerPt[1], cornerPt[2]],
@@ -884,13 +887,13 @@ class Space {
      * @returns {void}
      */
     polygon(points, style = {}) {
-        const fill = style.fill === undefined? null : style.fill;
-        const stroke = style.stroke === undefined? 0xFF : style.stroke;
-        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+        const fill = style.fill === undefined ? null : style.fill;
+        const stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
 
         if (points.length > 0) {
             const mat = this.matrix;
-            const ctx = this.ctx;        
+            const ctx = this.ctx;
             const start = mat.timesVector3(points[0]);
             ctx.beginPath();
             ctx.moveTo(start[0], start[1]);
@@ -923,9 +926,9 @@ class Space {
      * @returns {void}
      */
     sphere(centerPt, radius, style = {}) {
-        const fill = style.fill === undefined? null : style.fill;
-        const stroke = style.stroke === undefined? 0xFF : style.stroke;
-        const thickness = style.thickness === undefined? 0xFF : style.thickness;
+        const fill = style.fill === undefined ? null : style.fill;
+        const stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        const thickness = style.thickness === undefined ? 0xFF : style.thickness;
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -956,7 +959,7 @@ class Space {
      * @returns {void}
      */
     text(text, size, position, style = {}) {
-        const fill = style.fill === undefined? 0xFF : style.fill;
+        const fill = style.fill === undefined ? 0xFF : style.fill;
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -964,7 +967,7 @@ class Space {
 
         const scaleX = Math.abs(this.scale[0]) * 0.01;
 
-        ctx.font = `${size*scaleX}px sans-serif`;
+        ctx.font = `${size * scaleX}px sans-serif`;
         ctx.fillStyle = this._canvasColor(fill);
         ctx.fillText(text, pt[0], pt[1]);
     }
@@ -1081,7 +1084,7 @@ const spaces = {
     Perspective: new Space(ctx, 0.5, .5, 0.5, 0.5, -1, 1),
     Top: new Space(ctx, 0, 0, 0.5, 0.5, -1, 1),
     GUI: new Space(ctx, 0.5, 0, 0.5, 0.5, -1, 1),
-    Frames: new Space(ctx, 0, 0, 1, 1, -1, 1, /* squareAspect */ false),
+    Frames: new Space(ctx, 0, 0, 1, 1, 0, 1, /* squareAspect */ false),
 }
 
 /**
@@ -1099,19 +1102,19 @@ function mainLoop(elapsedMs) {
     spaces.GUI.updateViewMatrix();
     spaces.Frames.updateViewMatrix();
     spaces.Frames.background(0x333333FF);
-    
+
     spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
     spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
     spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    spaces.Front.text('Front', 12, [-0.9,0,0.9], {fill: 'white'});
-    spaces.Top.text('Top', 12, [-0.9,0,0.9], {fill: 'white'});
-    spaces.Perspective.text('Perspective', 12, [-0.9,0,0.9], {fill: 'white'});
+    spaces.Front.text('Front', 12, [-0.9, 0, 0.9], { fill: 'white' });
+    spaces.Top.text('Top', 12, [-0.9, 0, 0.9], { fill: 'white' });
+    spaces.Perspective.text('Perspective', 12, [-0.9, 0, 0.9], { fill: 'white' });
 
     const frames = spaces.Frames;
-    frames.rectXY([-1, -1, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
-    frames.rectXY([0, -1, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
-    frames.rectXY([0, 0, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
-    frames.rectXY([-1, 0, 0], 1, 1, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([0, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([0.5, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([0.5, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+    frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
 
     tick(elapsedMs, spaces, mappings, state);
     // UI.onFrameEnd();
@@ -1127,7 +1130,7 @@ requestAnimationFrame(mainLoop);
  * @param {Mappings} mappings 
  * @param {State} state 
  */
-function tick(elapsedMs, {Front, Perspective, Top, GUI }, mappings, state) {
+function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     // Front.sphere([0, 0, 0], 0.1, { fill: 'red', stroke: 'green', thickness: 2 });
     // Front.sphere([0, 0, 0.2], 0.05, { fill: 'red', stroke: 'green', thickness: 2 });
 
@@ -1154,8 +1157,8 @@ function tick(elapsedMs, {Front, Perspective, Top, GUI }, mappings, state) {
 
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
-    Top.text(`${mappings.normalizedFlat.length}`, 12, [0,0,0], {fill: 'white'});
-    Perspective.text(`${mappings.normalized.length}`, 12, [0,0,0], {fill: 'white'});
+    Top.text(`${mappings.normalizedFlat.length}`, 12, [0, 0, 0], { fill: 'white' });
+    Perspective.text(`${mappings.normalized.length}`, 12, [0, 0, 0], { fill: 'white' });
 
     Front.drawLeds(mappings.normalized, state.data);
     Top.drawLeds(mappings.normalizedFlat, state.data);
