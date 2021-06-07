@@ -11,7 +11,7 @@
  * @param {number} t
  * @returns {number} interpolated value
  */
- function lerp(a, b, t) {
+function lerp(a, b, t) {
     return (1 - t) * a + t * b;
 }
 
@@ -52,7 +52,7 @@ function linMap(inStart, inEnd, outStart, outEnd, inValue) {
  * @param {number} y2
  * @returns {number} The distance between two points
  */
- function dist(x1, y1, x2, y2) {
+function dist(x1, y1, x2, y2) {
     return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
@@ -436,9 +436,9 @@ class Vector3 extends Array {
         if (out === undefined) {
             out = Vector3.zero();
         }
-        const divisor = 1/Vector3.magnitude(vector);
+        const divisor = 1 / Vector3.magnitude(vector);
         if (Number.isFinite(divisor)) {
-            return Vector3.scaled(vector, 1/Vector3.magnitude(vector), out);
+            return Vector3.scaled(vector, 1 / Vector3.magnitude(vector), out);
         } else {
             out[0] = 0;
             out[1] = 0;
@@ -481,7 +481,7 @@ class Vector3 extends Array {
      * @returns {number}
      */
     static magnitude(vector) {
-        return Math.sqrt(vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2]);
+        return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
     }
 
     /**
@@ -490,7 +490,7 @@ class Vector3 extends Array {
      * @returns {number}
      */
     static sqrMagnitude(vector) {
-        return vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2];
+        return vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
     }
 }
 
@@ -637,6 +637,18 @@ class Matrix4x4 extends Array {
      */
     static identity() {
         return new Matrix4x4(
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1);
+    }
+
+    /**
+     * Sets the matrix to the identity matrix.
+     * @returns {void}
+     */
+    setToIdentity() {
+        this.setValues(
             1, 0, 0, 0,
             0, 1, 0, 0,
             0, 0, 1, 0,
@@ -844,7 +856,7 @@ class Matrix4x4 extends Array {
      * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
      * @returns {Matrix4x4}
      */
-     static fromYRotation(radians, out) {
+    static fromYRotation(radians, out) {
         if (out === undefined) {
             out = Matrix4x4.identity();
         }
@@ -877,7 +889,7 @@ class Matrix4x4 extends Array {
      */
     static fromZRotation(radians, out) {
         if (out === undefined) {
-            out = Matrix4x4.identity();    
+            out = Matrix4x4.identity();
         }
         out.setValues(
             Math.cos(radians), -Math.sin(radians), 0, 0,
@@ -1141,6 +1153,16 @@ class Space {
             [centerPt[0], centerPt[1], centerPt[2] + radius], { color, thickness });
     }
 
+    /**
+     * Draw 3d axes at the origin of the space.
+     * 
+     * @param {number} radius - Radius of the crosshairs.
+     * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
+     * @param {string|number} [style.fill] - Color of the axis labels
+     * @param {string|number} [style.stroke] - Color of the axis lines
+     * @param {number} [style.thickness] - Thickness of the axis lines
+     * @returns {void}
+     */
     axes(radius, textSize, style = {}) {
         const stroke = style.stroke === undefined ? null : style.stroke;
         const fill = style.fill === undefined ? 'white' : style.fill;
@@ -1239,7 +1261,7 @@ class Space {
         const scaleX = Math.abs(this.scale[0]);
         const scaleY = Math.abs(this.scale[1]);
         ctx.beginPath();
-        ctx.ellipse(pt[0], pt[1], radius * scaleX, radius * scaleY, 0, 0, Math.PI * 2);
+        ctx.ellipse(pt[0], pt[1], radius * scaleX, radius * scaleY, 0, 0, TAU);
         if (fill) {
             ctx.fillStyle = this._canvasColor(fill);
             ctx.fill();
@@ -1310,26 +1332,235 @@ class Space {
         }
     }
 
+    /**
+     * Set the rotation of the space to the given rotation matrix.
+     * @param {Matrix4x4} rotationMatrix
+     */
     setSpaceRotationMatrix(rotationMatrix) {
         Matrix4x4.copy(rotationMatrix, this.rotationMatrix);
+        this.updateViewMatrix();
     }
 
+    /**
+     * Reset the rotation of the space so there is no rotation.
+     */
+    resetSpaceRotation() {
+        this.rotationMatrix.setToIdentity();
+        this.updateViewMatrix();
+    }
+
+    /**
+     * Set the rotation of the space to the given rotations on each axis.
+     * @param {number} xRadians - Rotation around x axis
+     * @param {number} yRadians - Rotation around y axis
+     * @param {number} zRadians - Rotation around z axis
+     */
     setSpaceRotation(xRadians, yRadians, zRadians) {
         Matrix4x4.fromXRotation(xRadians, this.rotationMatrix);
         Matrix4x4.rotatedByY(this.rotationMatrix, yRadians, this.rotationMatrix);
         Matrix4x4.rotatedByZ(this.rotationMatrix, zRadians, this.rotationMatrix);
+        this.updateViewMatrix();
     }
 
-    rotateX(radians) {
+    /**
+     * Rotate the space by the given angle around the x axis
+     * @param {number} radians - Rotation around the axis
+     */
+    rotateSpaceByX(radians) {
         Matrix4x4.rotatedByX(this.rotationMatrix, radians, this.rotationMatrix);
+        this.updateViewMatrix();
     }
 
-    rotateY(radians) {
+    /**
+     * Rotate the space by the given angle around the y axis
+     * @param {number} radians - Rotation around the axis
+     */
+    rotateSpaceByY(radians) {
         Matrix4x4.rotatedByY(this.rotationMatrix, radians, this.rotationMatrix);
+        this.updateViewMatrix();
     }
 
-    rotateZ(radians) {
+    /**
+     * Rotate the space by the given angle around the z axis
+     * @param {number} radians - Rotation around the axis
+     */
+    rotateSpaceByZ(radians) {
         Matrix4x4.rotatedByZ(this.rotationMatrix, radians, this.rotationMatrix);
+        this.updateViewMatrix();
+    }
+}
+
+class UserInterface {
+    COLOR_IDLE = 'black'
+    COLOR_HOVERED = 'green'
+    COLOR_ACTIVE = 'yellow'
+    COLOR_TEXT_IDLE = 'white'
+    COLOR_TEXT_HOVERED = 'black'
+
+    /** @type {Vector3} Position of the mouse in normalized coordinates. */
+    mousePosition = Vector3.zero();
+    /** @type {boolean} Was the mouse clicked this frame? */
+    mouseClicked = false;
+
+    /**
+     * @param {Space} space
+     */
+    constructor(space) {
+        this.space = space;
+        this.mousePosition = Vector3.zero();
+
+        const canvas = space.ctx.canvas;
+
+        /**
+         * @param {MouseEvent} mouseEvent 
+         */
+        const _onMouseMove = (mouseEvent) => {
+
+            // canvas.clientHeight
+            // canvas.clientWidth
+
+            const minDim = Math.min(canvas.clientHeight, canvas.clientWidth);
+            const spaceDif = space.initialSpaceMax - space.initialSpaceMin;
+            const viewWidth = minDim * space.screenWidth;
+            const viewHeight = minDim * space.screenHeight;
+            let x = (mouseEvent.clientX - space.screenX * canvas.clientWidth)
+                / viewWidth;
+            let y = ((canvas.clientHeight - mouseEvent.clientY) - space.screenY * canvas.clientHeight)
+                / viewHeight;
+
+            x -= ilerp(space.initialSpaceMin, space.initialSpaceMax, 0) * spaceDif;
+            y -= ilerp(space.initialSpaceMin, space.initialSpaceMax, 0) * spaceDif;
+
+            x *= spaceDif;
+            y *= spaceDif;
+
+            this.mousePosition[0] = x;
+            this.mousePosition[1] = y;
+            this.mousePosition[2] = 0;
+        }
+
+        /**
+         * @param {MouseEvent} mouseEvent 
+         */
+        const _onMouseClick = (mouseEvent) => {
+            this.mouseClicked = true;
+        }
+
+        window.addEventListener('mousemove', _onMouseMove);
+        window.addEventListener('click', _onMouseClick);
+
+        this._removeListeners = () => {
+            window.removeEventListener('mousemove', _onMouseMove);
+            window.removeEventListener('click', _onMouseClick);
+        }
+    }
+
+    /**
+     * Is the mouse hovering over the given rectangle?
+     * @param {number} x Left normalized coordinate of the rect
+     * @param {number} y Bottom normalized coordinate of the rect
+     * @param {number} width Width of the rect in normalized coordinates
+     * @param {number} height Height of the rect in normalized coordinates
+     * @returns True if the mouse is over the rectangle.
+     */
+    isHoveringRect(x, y, width, height) {
+        const pos = this.mousePosition;
+        return pos[0] > x && pos[0] < x + width
+            && pos[1] > y && pos[1] < y + height;
+    }
+
+    /** 
+     * Draws an interactive button.
+     * @param {string} label Text to display on the button
+     * @param {number} x Normalized left coordinate of the button
+     * @param {number} y Normalized bottom coordinate of the button
+     * @returns {boolean} True if the button was clicked this frame
+     */
+    button(label, x, y) {
+        this.space.text(`${this.mousePosition[0].toFixed(2)} ${this.mousePosition[1].toFixed(2)}`, 10, [0, 0, 0]);
+        // const fontSize = 20;
+        // const space = this.space;
+
+        // const labelDims = space.measureText(label, fontSize);
+        // const padding = 0.02;
+        // const width = labelDims[0] + padding * 2;
+        // const height = labelDims[1] + padding * 2;
+
+        // const isHovered = this.isHoveringRect(x, y, width, height);
+        // const wentDown = isHovered && this.mouseClicked;
+
+        // space.rectXY([x, y, 0], width, height,
+        //     { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE });
+        // space.text(label, fontSize, [x + padding, y + padding, 0], {
+        //     fill: isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE
+        // })
+
+        // return wentDown;
+
+        return false;
+    }
+
+    /** 
+     * Must be called exactly once at the end of the frame.
+     * @returns {void}
+     */
+    onFrameEnd() {
+        this.mouseClicked = false;
+        this.space.updateViewMatrix();
+    }
+
+    /** 
+     * Remove all event listeners set up in the constructor.
+     * @returns {void}
+     */
+    cleanUp() {
+        this._removeListeners();
+    }
+}
+
+class View extends Space {
+    /**
+     * Create a new view for drawing on the screen.
+     * The view will appear with a corner at `screenX, screenY`
+     * and dimensions `screenWidth` and `screenHeight`.
+     * These coordinates exist in a space where 0,0 is the bottom left of the canvas
+     * and 1,1 is the top right of the canvas.
+     * 
+     * Each view has a user interface that you can access via `.ui`.
+     * 
+     * @param {CanvasRenderingContext2D} ctx - rendering canvas
+     * @param {number} screenX
+     * @param {number} screenY
+     * @param {number} screenWidth
+     * @param {number} screenHeight
+     * @param {number} initialSpaceMin - initial minimum value at the edge of the space
+     * @param {number} initialSpaceMax - initial maximum value at the edge of the space
+     */
+    constructor(ctx,
+        screenX,
+        screenY,
+        screenWidth,
+        screenHeight,
+        initialSpaceMin = -1,
+        initialSpaceMax = 1) {
+        super(ctx, screenX,
+            screenY,
+            screenWidth,
+            screenHeight,
+            initialSpaceMin = -1,
+            initialSpaceMax = 1);
+        const uiSpace = new Space(ctx, screenX,
+            screenY,
+            screenWidth,
+            screenHeight,
+            initialSpaceMin = -1,
+            initialSpaceMax = 1);
+        this.ui = new UserInterface(uiSpace);
+    }
+
+    onFrameEnd() {
+        this.updateViewMatrix();
+        this.ui.onFrameEnd();
     }
 }
 
@@ -1342,11 +1573,11 @@ class Spaces {
     /**
      * @param {CanvasRenderingContext2D} ctx 
      */
-    constructor(ctx){
-        this.Front = new Space(ctx, 0, .5, 0.5, 0.5, -1, 1);
-        this.Perspective = new Space(ctx, 0.5, .5, 0.5, 0.5, -1, 1);
-        this.Top = new Space(ctx, 0, 0, 0.5, 0.5, -1, 1);
-        this.GUI = new Space(ctx, 0.5, 0, 0.5, 0.5, -1, 1);
+    constructor(ctx) {
+        this.Front = new View(ctx, 0, .5, 0.5, 0.5, -1, 1);
+        this.Perspective = new View(ctx, 0.5, .5, 0.5, 0.5, -1, 1);
+        this.Top = new View(ctx, 0, 0, 0.5, 0.5, -1, 1);
+        this.GUI = new View(ctx, 0.5, 0, 0.5, 0.5, 0, 2);
         this.Frames = new Space(ctx, 0, 0, 1, 1, 0, 1, /* squareAspect */ false);
     }
 }
@@ -1365,7 +1596,7 @@ class State {
         this.statusWs.onmessage = (evt) => {
             console.log('MSG', evt);
         };
-        
+
         this.dataWs = new WebSocket(`ws://${window.location.host}/data`);
         this.dataWs.onopen = (evt) => {
             console.log('OPEN');
@@ -1376,7 +1607,7 @@ class State {
         this.dataWs.onmessage = (evt) => {
             console.log('MSG', evt);
         };
-        
+
         this.updateWs = new WebSocket(`ws://${window.location.host}/update`);
         this.updateWs.onmessage = (evt) => {
             // We got a message that a file changed.
@@ -1457,7 +1688,7 @@ class Mappings {
             this.physical = persp;
             this.normalized = mapPointsToNormalizedCoords(persp);
             this.normalizedFlat = mapPointsToNormalizedCoords(flat);
-        
+
             state.data = new Uint8Array(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
         });
     }
@@ -1484,32 +1715,32 @@ const spaces = new Spaces(ctx);
  */
 function mainLoop(elapsedMs) {
     autoResize(ctx);
-    // ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
-    spaces.Front.setSpaceRotation(-Math.PI / 2, 0, 0);
-    spaces.Front.updateViewMatrix();
-    spaces.Perspective.updateViewMatrix();
-    spaces.Top.updateViewMatrix();
-    spaces.GUI.updateViewMatrix();
-    spaces.Frames.updateViewMatrix();
-    spaces.Frames.background(0x333333FF);
-
-    spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    spaces.Front.text('Front', 12, [-0.9, 0, 0.9], { fill: 'white' });
-    spaces.Top.text('Top', 12, [-0.9, 0, 0.9], { fill: 'white' });
-    spaces.Perspective.text('Perspective', 12, [-0.9, 0, 0.9], { fill: 'white' });
-
     const frames = spaces.Frames;
+    spaces.Frames.resetSpaceRotation();
+    frames.background(0x333333FF);
     frames.rectXY([0, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
     frames.rectXY([0.5, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
     frames.rectXY([0.5, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
     frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
 
+    spaces.Perspective.resetSpaceRotation();
+    spaces.Perspective.text('Perspective', 10, [-0.9, 0.9, 0], { fill: 'white' });
+    spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
+    spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+
+    spaces.Front.resetSpaceRotation();
+    spaces.Front.text('Front', 10, [-0.9, 0.9, 0], { fill: 'white' });
+    spaces.Front.setSpaceRotation(-TAU / 4, 0, 0);
+    spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+
+    spaces.Top.resetSpaceRotation();
+    spaces.Top.text('Top', 10, [-0.9, 0.9, 0], { fill: 'white' });
+    spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+
     tick(elapsedMs, spaces, mappings, state);
-    // UI.onFrameEnd();
+    spaces.GUI.onFrameEnd();
     requestAnimationFrame(mainLoop);
+
 }
 requestAnimationFrame(mainLoop);
 
@@ -1553,12 +1784,17 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     Front.text(`${state.animState}`, 12, [-1, 0, -1], { fill: 'white' });
     // state.animState++;
     const [w, h] = Front.measureText(`${state.animState}`, 12);
-    Front.line([-1, 0, -1], [-1+w, 0, -1+h], {color: 'red', thickness:1});
-    
-    
+    Front.line([-1, 0, -1], [-1 + w, 0, -1 + h], { color: 'red', thickness: 1 });
+
+
     Front.drawLeds(mappings.normalized, state.data);
     Top.drawLeds(mappings.normalizedFlat, state.data);
     Perspective.drawLeds(mappings.normalized, state.data);
+
+    GUI.ui.button('My First Button', 0, 0);
+    GUI.ui.space.rectXY([-1, -1, 0], 2, 2, { fill: null, stroke: 'green', thickness: 2 });
+    GUI.sphere(GUI.ui.mousePosition, 0.1, { fill: 'red' });
+
 
     // const pixelsToNorm = 1 / ctx.canvas.clientHeight;
     // const bottom = -1;
