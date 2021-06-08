@@ -130,148 +130,10 @@ function autoResize(ctx) {
     }
 }
 
-// class UserInterface {
-//     /** @type {[x: number, y: number]} Position of the mouse in normalized coordinates. */
-//     mousePosition = [0, 0];
-//     /** @type {boolean} Was the mouse clicked this frame? */
-//     mouseClicked = false;
-
-//     COLOR_IDLE = 'black'
-//     COLOR_HOVERED = 'green'
-//     COLOR_ACTIVE = 'yellow'
-//     COLOR_TEXT_IDLE = 'white'
-//     COLOR_TEXT_HOVERED = 'black'
-
-//     /**
-//      * @param {CanvasRenderingContext2D} ctx
-//      */
-//     constructor(ctx) {
-//         const canvas = ctx.canvas;
-
-//         /**
-//          * @param {MouseEvent} mouseEvent 
-//          */
-//         const _onMouseMove = (mouseEvent) => {
-//             const width = canvas.clientWidth;
-//             const height = canvas.clientHeight;
-//             const aspect = height / width;
-//             const scaleX = width / 2 * aspect;
-//             const scaleY = -height / 2;
-//             const translateX = width / 2;
-//             const translateY = height / 2;
-//             this.mousePosition[0] = (mouseEvent.clientX - translateX) / scaleX;
-//             this.mousePosition[1] = (mouseEvent.clientY - translateY) / scaleY;
-//         }
-
-//         /**
-//          * @param {MouseEvent} mouseEvent 
-//          */
-//         const _onMouseClick = (mouseEvent) => {
-//             this.mouseClicked = true;
-//         }
-
-//         window.addEventListener('mousemove', _onMouseMove);
-//         window.addEventListener('click', _onMouseClick);
-
-//         this._removeListeners = () => {
-//             window.removeEventListener('mousemove', _onMouseMove);
-//             window.removeEventListener('click', _onMouseClick);
-//         }
-//     }
-
-//     /**
-//      * Is the mouse hovering over the given rectangle?
-//      * @param {number} x Left normalized coordinate of the rect
-//      * @param {number} y Bottom normalized coordinate of the rect
-//      * @param {number} width Width of the rect in normalized coordinates
-//      * @param {number} height Height of the rect in normalized coordinates
-//      * @returns True if the mouse is over the rectangle.
-//      */
-//     isHoveringRect(x, y, width, height) {
-//         const pos = this.mousePosition;
-//         return pos[0] > x && pos[0] < x + width
-//             && pos[1] > y && pos[1] < y + height;
-//     }
-
-//     /** 
-//      * Draws an interactive button.
-//      * @param {string} label Text to display on the button
-//      * @param {number} x Normalized left coordinate of the button
-//      * @param {number} y Normalized bottom coordinate of the button
-//      * @returns {boolean} True if the button was clicked this frame
-//      */
-//     button(label, x, y) {
-//         textSize(20);
-//         const labelDims = measureTextDims(label);
-//         const padding = 0.02;
-//         const width = labelDims[0] + padding * 2;
-//         const height = labelDims[1] + padding * 2;
-
-//         const isHovered = this.isHoveringRect(x, y, width, height);
-//         const wentDown = isHovered && this.mouseClicked;
-
-//         fill(isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE);
-//         rect(x, y, width, height);
-//         fill(isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
-//         text(label, x + padding, y + padding);
-
-//         return wentDown;
-//     }
-
-//     /** 
-//      * Draws an interactive button that has an active/inactive state.
-//      * @param {string} label Text to display on the button
-//      * @param {boolean} isActive Should the button appear "active" even if not hovered?
-//      * @param {number} x Normalized left coordinate of the button
-//      * @param {number} y Normalized bottom coordinate of the button
-//      * @returns {boolean} True if the button was clicked this frame
-//      */
-//     toggleButton(label, isActive, x, y) {
-//         textSize(20);
-//         const labelDims = measureTextDims(label);
-//         const padding = 0.02;
-//         const width = labelDims[0] + padding * 2;
-//         const height = labelDims[1] + padding * 2;
-
-//         const isHovered = this.isHoveringRect(x, y, width, height);
-//         const wentDown = isHovered && this.mouseClicked;
-
-//         if (isHovered) {
-//             fill(this.COLOR_HOVERED);
-//         } else if (isActive) {
-//             fill(this.COLOR_ACTIVE);
-//         } else {
-//             fill(this.COLOR_IDLE);
-//         }
-//         rect(x, y, width, height);
-
-//         fill(isHovered || isActive ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE);
-//         text(label, x + padding, y + padding);
-
-//         return wentDown;
-//     }
-
-//     /** 
-//      * Must be called exactly once at the end of the frame.
-//      * @returns {void}
-//      */
-//     onFrameEnd() {
-//         this.mouseClicked = false;
-//     }
-
-//     /** 
-//      * Remove all event listeners set up in the constructor.
-//      * @returns {void}
-//      */
-//     cleanUp() {
-//         this._removeListeners();
-//     }
-// }
 
 /**
  * @typedef {[x: number, y: number, z: number]|Vector3|Array<number, 3>} iVector3
  */
-
 class Vector3 extends Array {
     /** 
      * @private
@@ -1079,7 +941,7 @@ class Space {
 
         this.scale[0] = (xDim / spaceDif) * this.screenWidth;
         this.scale[1] = -(yDim / spaceDif) * this.screenHeight;
-        this.scale[2] = zDim / spaceDif;
+        this.scale[2] = zDim / spaceDif * Math.min(this.screenWidth, this.screenHeight);
         this.translation[0] = canvas.width * this.screenWidth * spaceOffset + left;
         this.translation[1] = canvas.height - (canvas.height * this.screenHeight * spaceOffset + top);
         this.translation[2] = 0;
@@ -1157,7 +1019,7 @@ class Space {
      * Draw 3d axes at the origin of the space.
      * 
      * @param {number} radius - Radius of the crosshairs.
-     * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
+     * @param {Object} [style] - [Optional] style properties e.g. `{ fill: 'red', stroke: 'green', thickness: 2 }`
      * @param {string|number} [style.fill] - Color of the axis labels
      * @param {string|number} [style.stroke] - Color of the axis lines
      * @param {number} [style.thickness] - Thickness of the axis lines
@@ -1191,7 +1053,7 @@ class Space {
     rectXY(cornerPt, width, height, style = {}) {
         style.fill = style.fill === undefined ? null : style.fill;
         style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
-        style.thickness = style.thickness === undefined ? 0xFF : style.thickness;
+        style.thickness = style.thickness === undefined ? 1 : style.thickness;
 
         this.polygon([
             cornerPt,
@@ -1279,7 +1141,7 @@ class Space {
      * @param {string} text - The text to display
      * @param {number} size - Font size
      * @param {iVector3} position - Position of the text
-     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red'}`
      * @param {string|number} [style.fill] - Fill color of the text.
      * @returns {void}
      */
@@ -1290,10 +1152,11 @@ class Space {
         const ctx = this.ctx;
         const pt = Matrix4x4.multiplyVector3(mat, position, /* out */this.__tempP1);
 
-        const scaleX = Math.abs(this.scale[0]) * 0.01;
-
-        ctx.font = `${size * scaleX}px sans-serif`;
+        const scaleX = Math.abs(this.scale[0]);
+        const spaceSize = this.initialSpaceMax - this.initialSpaceMin;
+        ctx.font = `${(size*scaleX*0.003*spaceSize)}px sans-serif`;
         ctx.fillStyle = this._canvasColor(fill);
+        // ctx.fillText(text, pt[0], pt[1]);
         ctx.fillText(text, pt[0], pt[1]);
     }
 
@@ -1309,11 +1172,19 @@ class Space {
         const ctx = this.ctx;
         const scaleX = Math.abs(this.scale[0]);
         const scaleY = Math.abs(this.scale[1]);
-        ctx.font = `${size * 0.01 * scaleX}px sans-serif`;
+        const spaceSize = this.initialSpaceMax - this.initialSpaceMin;
+        ctx.font = `${(size*scaleX*0.003*spaceSize)}px sans-serif`;
         const measurements = ctx.measureText(text);
 
-        const textWidth = measurements.width / scaleX;
-        const textHeight = (measurements.actualBoundingBoxAscent - measurements.actualBoundingBoxDescent) / scaleY;
+        // const textWidth = measurements.width / scaleX;
+        const textWidth = 
+            (measurements.actualBoundingBoxRight + measurements.actualBoundingBoxLeft)
+            / scaleX;
+        // WARNING: these are relative to the baseline,
+        // so they're not as useful as would be ideal
+        const textHeight =
+            (measurements.actualBoundingBoxAscent + measurements.actualBoundingBoxDescent)
+            / scaleY;
         return [textWidth, textHeight];
     }
 
@@ -1415,25 +1286,28 @@ class UserInterface {
          * @param {MouseEvent} mouseEvent 
          */
         const _onMouseMove = (mouseEvent) => {
-
-            // canvas.clientHeight
-            // canvas.clientWidth
-
-            const minDim = Math.min(canvas.clientHeight, canvas.clientWidth);
             const spaceDif = space.initialSpaceMax - space.initialSpaceMin;
-            const viewWidth = minDim * space.screenWidth;
-            const viewHeight = minDim * space.screenHeight;
-            let x = (mouseEvent.clientX - space.screenX * canvas.clientWidth)
-                / viewWidth;
-            let y = ((canvas.clientHeight - mouseEvent.clientY) - space.screenY * canvas.clientHeight)
-                / viewHeight;
+            
+            // We need to convert the mouse coordinate into draw space.
+            // Start by shifting the mouse position by the vector from the mouse space origin to the view origin (still in browser client space)
+            // Also flip the y axis so that it is in a math-friendly space
+            let x = (mouseEvent.clientX - space.screenX * canvas.clientWidth);
+            let y = ((canvas.clientHeight - mouseEvent.clientY) - space.screenY * canvas.clientHeight);
+            // Determine the draw space origin in client space and shift by it
+            
+            const tx = linMap(space.initialSpaceMin, space.initialSpaceMax, 0, canvas.clientWidth * space.screenHeight, 0);
+            const ty = linMap(space.initialSpaceMin, space.initialSpaceMax, 0, canvas.clientHeight * space.screenHeight, 0);
+            
+            x -= tx;
+            y -= ty;
 
-            x -= ilerp(space.initialSpaceMin, space.initialSpaceMax, 0) * spaceDif;
-            y -= ilerp(space.initialSpaceMin, space.initialSpaceMax, 0) * spaceDif;
-
-            x *= spaceDif;
-            y *= spaceDif;
-
+            // Scale the space to match the defined coordinates
+            const minDim = 
+                Math.min(canvas.clientHeight * space.screenHeight, 
+                         canvas.clientWidth * space.screenWidth);
+            x /= minDim/spaceDif;
+            y /= minDim/spaceDif;
+            
             this.mousePosition[0] = x;
             this.mousePosition[1] = y;
             this.mousePosition[2] = 0;
@@ -1469,35 +1343,123 @@ class UserInterface {
             && pos[1] > y && pos[1] < y + height;
     }
 
+    /**
+     * Is the mouse hovering over the given circle?
+     * @param {number} x Center x coordinate of the circle
+     * @param {number} y Center y coordinate of the circle
+     * @param {number} radius Radius of the circle
+     * @returns True if the mouse is over the circle.
+     */
+    isHoveringCircle(x, y, radius) {
+        const pos = this.mousePosition;
+        return (x - pos[0])*(x - pos[0]) + (y - pos[1])*(y - pos[1]) < radius * radius;
+    }
+
     /** 
      * Draws an interactive button.
      * @param {string} label Text to display on the button
-     * @param {number} x Normalized left coordinate of the button
-     * @param {number} y Normalized bottom coordinate of the button
+     * @param {number} x Left coordinate of the button in UI space
+     * @param {number} y Bottom coordinate of the button in UI space
      * @returns {boolean} True if the button was clicked this frame
      */
     button(label, x, y) {
-        this.space.text(`${this.mousePosition[0].toFixed(2)} ${this.mousePosition[1].toFixed(2)}`, 10, [0, 0, 0]);
-        // const fontSize = 20;
-        // const space = this.space;
+        const fontSize = 10;
+        const space = this.space;
 
-        // const labelDims = space.measureText(label, fontSize);
-        // const padding = 0.02;
-        // const width = labelDims[0] + padding * 2;
-        // const height = labelDims[1] + padding * 2;
+        const labelDims = space.measureText(label, fontSize);
+        const padding = labelDims[1] * 0.3;
+        const width = labelDims[0] + padding * 2;
+        const height = labelDims[1] + padding * 2;
 
-        // const isHovered = this.isHoveringRect(x, y, width, height);
-        // const wentDown = isHovered && this.mouseClicked;
+        const isHovered = this.isHoveringRect(x, y, width, height);
+        const wentDown = isHovered && this.mouseClicked;
 
-        // space.rectXY([x, y, 0], width, height,
-        //     { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE });
-        // space.text(label, fontSize, [x + padding, y + padding, 0], {
-        //     fill: isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE
-        // })
+        space.rectXY([x, y, 0], width, height,
+            { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE });
+        space.text(label, fontSize, [x + padding, y + padding, 0], {
+            fill: isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE
+        });
 
-        // return wentDown;
+        return wentDown;
+    }
 
-        return false;
+    /** 
+     * Draws an interactive circular button.
+     * @param {string} label Text to display on the button
+     * @param {number} x Center x coordinate of the button in UI space
+     * @param {number} y Center y coordinate of the button in UI space
+     * @returns {boolean} True if the button was clicked this frame
+     */
+     circleButton(label, x, y) {
+        const fontSize = 10;
+        const space = this.space;
+
+        const labelDims = space.measureText(label, fontSize);
+        const padding = labelDims[1] * 0.4;
+        const width = labelDims[0];
+        const height = labelDims[1];
+        const radius = width*0.5 + padding;
+
+        const isHovered = this.isHoveringCircle(x, y, radius);
+        const wentDown = isHovered && this.mouseClicked;
+
+        space.sphere([x, y, 0], radius, { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE })
+        space.text(label, fontSize, [x-width*0.5, y-height*0.5, 0], {
+            fill: isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE
+        });
+
+        return wentDown;
+    }
+
+    /** 
+     * Draws an interactive button that has an active/inactive state.
+     * @param {string} label Text to display on the button
+     * @param {boolean} isActive Should the button appear "active" even if not hovered?
+     * @param {number} x Left coordinate of the button in UI space
+     * @param {number} y Bottom coordinate of the button in UI space
+     * @returns {boolean} True if the button was clicked this frame
+     */
+    highlightButton(label, isActive, x, y) {
+        const fontSize = 10;
+        const space = this.space;
+
+        const labelDims = space.measureText(label, fontSize);
+        const padding = labelDims[1] * 0.3;
+        const width = labelDims[0] + padding * 2;
+        const height = labelDims[1] + padding * 2;
+
+        const isHovered = this.isHoveringRect(x, y, width, height);
+        const wentDown = isHovered && this.mouseClicked;
+
+        let fill;
+        if (isHovered) {
+            fill = this.COLOR_HOVERED;
+        } else if (isActive) {
+            fill = this.COLOR_ACTIVE;
+        } else {
+            fill = this.COLOR_IDLE;
+        }
+        space.rectXY([x, y, 0], width, height, { fill });
+        space.text(label, fontSize, [x + padding, y + padding, 0],
+            {fill: isHovered || isActive ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE});
+
+        return wentDown;
+    }
+
+    /** 
+     * Draws a text label.
+     * @param {string} text Text to display on the button
+     * @param {number} x Left coordinate of the label in UI space
+     * @param {number} y Bottom coordinate of the label in UI space
+     * @param {Object} [style] - [Optional] style properties e.g. `{ fill: 'red' }`
+     * @param {string|number|null} [style.fill] - Fill color of the text.
+     * @returns {void}
+     */
+    label(text, x, y, style = {}) {
+        style.fill = style.fill === undefined ? this.COLOR_TEXT_IDLE : style.fill;
+        const fontSize = 10;
+        const space = this.space;
+        space.text(text, fontSize, [x, y, 0], style);
     }
 
     /** 
@@ -1547,14 +1509,15 @@ class View extends Space {
             screenY,
             screenWidth,
             screenHeight,
-            initialSpaceMin = -1,
-            initialSpaceMax = 1);
-        const uiSpace = new Space(ctx, screenX,
+            initialSpaceMin,
+            initialSpaceMax);
+        const uiSpace = new Space(ctx, 
+            screenX,
             screenY,
             screenWidth,
             screenHeight,
-            initialSpaceMin = -1,
-            initialSpaceMax = 1);
+            0,
+            100);
         this.ui = new UserInterface(uiSpace);
     }
 
@@ -1575,17 +1538,24 @@ class Spaces {
      */
     constructor(ctx) {
         this.Front = new View(ctx, 0, .5, 0.5, 0.5, -1, 1);
-        this.Perspective = new View(ctx, 0.5, .5, 0.5, 0.5, -1, 1);
+        this.Perspective = new View(ctx, 0.5, 0.5, 0.5, 0.5, -1, 1);
         this.Top = new View(ctx, 0, 0, 0.5, 0.5, -1, 1);
-        this.GUI = new View(ctx, 0.5, 0, 0.5, 0.5, 0, 2);
+        this.GUI = new View(ctx, 0.5, 0, 0.5, 0.5, -1, 1);
         this.Frames = new Space(ctx, 0, 0, 1, 1, 0, 1, /* squareAspect */ false);
     }
 }
 
+/**
+ * Primary state of the visualizer.
+ * Stores the colors of the LEDs and any values
+ * needed to calculate the next animation frame.
+ */
 class State {
+    /** Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED. */
+    data = new Uint8Array(0)
+
+
     constructor() {
-        /** Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED. */
-        this.data = new Uint8Array(0)
         this.reset();
         this.tryRestoreFromSave();
 
@@ -1739,6 +1709,9 @@ function mainLoop(elapsedMs) {
 
     tick(elapsedMs, spaces, mappings, state);
     spaces.GUI.onFrameEnd();
+    spaces.Perspective.onFrameEnd();
+    spaces.Front.onFrameEnd();
+    spaces.Top.onFrameEnd();
     requestAnimationFrame(mainLoop);
 
 }
@@ -1791,9 +1764,18 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     Top.drawLeds(mappings.normalizedFlat, state.data);
     Perspective.drawLeds(mappings.normalized, state.data);
 
-    GUI.ui.button('My First Button', 0, 0);
-    GUI.ui.space.rectXY([-1, -1, 0], 2, 2, { fill: null, stroke: 'green', thickness: 2 });
-    GUI.sphere(GUI.ui.mousePosition, 0.1, { fill: 'red' });
+    if (GUI.ui.button('Reset State', 10, 50)) {
+        state.reset();
+    }
+
+    GUI.ui.label('My Label', 10, 70);
+    GUI.ui.circleButton('My Circle Bttn', 50, 70);
+
+    if (GUI.ui.highlightButton('Toggle Bttn', state.animState === 1, 10, 30)) {
+        state.animState = 1;
+    }
+
+    // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
 
 
     // const pixelsToNorm = 1 / ctx.canvas.clientHeight;
