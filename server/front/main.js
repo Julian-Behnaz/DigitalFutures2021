@@ -167,12 +167,21 @@ class Vector3 extends Array {
     }
 
     /**
-     * Returns a new vector with the same values as `vector`.
-     * @param {iVector3} vector 
+     * Returns a new vector with the same values as `this`.
      * @returns {Vector3}
      */
-    static duplicate(vector) {
-        return new Vector3(vector[0], vector[1], vector[1]);
+    duplicate() {
+        return new Vector3(this[0], this[1], this[1]);
+    }
+
+    /**
+     * Copies values from `this` to `out`.
+     * @param {iVector3} out
+     */
+    copyTo(out) {
+        out[0] = this[0];
+        out[1] = this[1];
+        out[2] = this[2];
     }
 
     /**
@@ -354,34 +363,84 @@ class Vector3 extends Array {
     static sqrMagnitude(vector) {
         return vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
     }
+    
+    /**
+     * Returns the dot product of `a` and `b`.
+     * @param {iVector3} a
+     * @param {iVector3} b
+     * @returns {number}
+     */
+    static dotProduct(a, b) {
+        return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    }
+
+    /**
+     * Returns the dot product of `this` and `vector`.
+     * @param {iVector3} vector
+     * @returns {number}
+     */
+    dot(vector) {
+        return Vector3.dotProduct(this, vector);
+    }
+
+    /**
+     * Lerps between `a` and `b` by t.
+     * @param {iVector3} a
+     * @param {iVector3} b
+     * @param {number} t
+     * @param {Vector3} [out]
+     * @returns {Vector3}
+     */
+    static lerp(a, b, t, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = lerp(a[0], b[0], t);
+        out[1] = lerp(a[1], b[1], t);
+        out[2] = lerp(a[2], b[2], t);
+        return out;
+    }
+
+    /**
+     * Returns the `t` value that would make `Vector3.lerp(a, b, t)` return `vector`.
+     * @param {iVector3} a
+     * @param {iVector3} b
+     * @param {iVector3} vector
+     * @returns {number}
+     */
+    static ilerp(a, b, vector) {
+        return (vector[0]-a[0])*(b[0]-a[0])+(vector[1]-a[1])*(b[1]-a[1])+(vector[2]-a[2])*(b[2]-a[2]);
+    }
 }
 
 class Matrix4x4 extends Array {
     /**
      * @private
-     * @param {number} m11 
-     * @param {number} m12 
-     * @param {number} m13 
-     * @param {number} m14 
-     * @param {number} m21 
-     * @param {number} m22 
-     * @param {number} m23 
-     * @param {number} m24 
-     * @param {number} m31 
-     * @param {number} m32 
-     * @param {number} m33 
-     * @param {number} m34 
-     * @param {number} m41 
-     * @param {number} m42 
-     * @param {number} m43 
-     * @param {number} m44 
+     * @param {number} m11
+     * @param {number} m12
+     * @param {number} m13
+     * @param {number} m14
+     * @param {number} m21
+     * @param {number} m22
+     * @param {number} m23
+     * @param {number} m24
+     * @param {number} m31
+     * @param {number} m32
+     * @param {number} m33
+     * @param {number} m34
+     * @param {number} m41
+     * @param {number} m42
+     * @param {number} m43
+     * @param {number} m44
      */
-    constructor(m11, m12, m13, m14,
+    constructor(
+        m11, m12, m13, m14,
         m21, m22, m23, m24,
         m31, m32, m33, m34,
         m41, m42, m43, m44) {
         super(16);
-        this.setValues(m11, m12, m13, m14,
+        this.setValues(
+            m11, m12, m13, m14,
             m21, m22, m23, m24,
             m31, m32, m33, m34,
             m41, m42, m43, m44);
@@ -863,11 +922,40 @@ class Space {
         this.translation = Vector3.create(0, 0, 0);
         this.rotationMatrix = Matrix4x4.identity();
         this.matrix = Matrix4x4.identity();
+        this.inverseMatrix = Matrix4x4.identity();
 
         this.__tempP1 = Vector3.zero();
         this.__tempP2 = Vector3.zero();
+        this.__tempP3 = Vector3.zero();
+        this.__tempP4 = Vector3.zero();
 
         this.updateViewMatrix();
+
+        if (!Space.__removeListeners) {
+            /**
+             * @param {MouseEvent} mouseEvent 
+             */
+            const _onMouseMove = (mouseEvent) => {
+                Space.rawMousePosition[0] = mouseEvent.clientX * canvas.width/canvas.clientWidth;
+                Space.rawMousePosition[1] = mouseEvent.clientY * canvas.height/canvas.clientHeight;
+                Space.rawMousePosition[2] = 0;
+            }
+    
+            /**
+             * @param {MouseEvent} mouseEvent 
+             */
+            const _onMouseClick = (mouseEvent) => {
+                Space.mouseClickedThisFrame = true;
+            }
+    
+            window.addEventListener('mousemove', _onMouseMove);
+            window.addEventListener('click', _onMouseClick);
+    
+            Space.__removeListeners = () => {
+                window.removeEventListener('mousemove', _onMouseMove);
+                window.removeEventListener('click', _onMouseClick);
+            }
+        }
     }
 
     /**
@@ -951,7 +1039,33 @@ class Space {
             0, 0, this.scale[2], this.translation[2],
             0, 0, 0, 1);
 
-        this.matrix = (this.matrix).times(this.rotationMatrix);
+        // this.matrix = (this.matrix).times(this.rotationMatrix);
+        Matrix4x4.multiply(this.matrix, this.rotationMatrix, this.matrix);
+
+        // Also store the inverse of the view matrix, which we can calculate directly.
+        // See https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
+        const iSx = 1/this.scale[0];
+        const iSy = 1/this.scale[1];
+        const iSz = 1/this.scale[2];
+        // 0 4 8  12
+        // 1 5 9  13
+        // 2 6 10 14
+        // 3 7 11 15
+        const rot = this.rotationMatrix;
+        this.translation.copyTo(this.__tempP1);
+        const iT = Vector3.scaled(this.__tempP1, -1, this.__tempP1);
+        const X = this.__tempP2;
+        const Y = this.__tempP3;
+        const Z = this.__tempP4;
+        X.setValues(iSx * rot[0], iSy * rot[1], iSz * rot[2]);
+        Y.setValues(iSx * rot[4], iSy * rot[5], iSz * rot[6]);
+        Z.setValues(iSx * rot[8], iSy * rot[9], iSz * rot[10]);
+        this.inverseMatrix.setValues(
+            X[0], X[1], X[2], iT.dot(X),
+            Y[0], Y[1], Y[2], iT.dot(Y),
+            Z[0], Z[1], Z[2], iT.dot(Z),
+            0, 0, 0, 1,
+        );
     }
 
     /**
@@ -1259,7 +1373,32 @@ class Space {
         Matrix4x4.rotatedByZ(this.rotationMatrix, radians, this.rotationMatrix);
         this.updateViewMatrix();
     }
+
+    getMousePosition(depth = 0, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        Space.rawMousePosition.copyTo(out);
+        out[2] = depth;
+        return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    debug() {
+        const amt = 10;
+        for (let x = 0; x <= amt; x++) {
+            for (let y = 0; y <= amt; y++) {
+                this.sphere(this.inverseMatrix.timesVector3(
+                    [x/amt*canvas.width, y/amt*canvas.height, 0]), 0.01, {fill: 'purple', stroke: null});
+            }
+        }
+    }
 }
+Space.__removeListeners = null;
+Space.rawMousePosition = Vector3.zero();
+Space.mouseClickedThisFrame = false;
+Space.onFrameEnd = () => {
+    Space.mouseClickedThisFrame = false;
+};
 
 class UserInterface {
     COLOR_IDLE = 'black'
@@ -1270,63 +1409,12 @@ class UserInterface {
 
     /** @type {Vector3} Position of the mouse in normalized coordinates. */
     mousePosition = Vector3.zero();
-    /** @type {boolean} Was the mouse clicked this frame? */
-    mouseClicked = false;
 
     /**
      * @param {Space} space
      */
     constructor(space) {
         this.space = space;
-        this.mousePosition = Vector3.zero();
-
-        const canvas = space.ctx.canvas;
-
-        /**
-         * @param {MouseEvent} mouseEvent 
-         */
-        const _onMouseMove = (mouseEvent) => {
-            const spaceDif = space.initialSpaceMax - space.initialSpaceMin;
-            
-            // We need to convert the mouse coordinate into draw space.
-            // Start by shifting the mouse position by the vector from the mouse space origin to the view origin (still in browser client space)
-            // Also flip the y axis so that it is in a math-friendly space
-            let x = (mouseEvent.clientX - space.screenX * canvas.clientWidth);
-            let y = ((canvas.clientHeight - mouseEvent.clientY) - space.screenY * canvas.clientHeight);
-            // Determine the draw space origin in client space and shift by it
-            
-            const tx = linMap(space.initialSpaceMin, space.initialSpaceMax, 0, canvas.clientWidth * space.screenHeight, 0);
-            const ty = linMap(space.initialSpaceMin, space.initialSpaceMax, 0, canvas.clientHeight * space.screenHeight, 0);
-            
-            x -= tx;
-            y -= ty;
-
-            // Scale the space to match the defined coordinates
-            const minDim = 
-                Math.min(canvas.clientHeight * space.screenHeight, 
-                         canvas.clientWidth * space.screenWidth);
-            x /= minDim/spaceDif;
-            y /= minDim/spaceDif;
-            
-            this.mousePosition[0] = x;
-            this.mousePosition[1] = y;
-            this.mousePosition[2] = 0;
-        }
-
-        /**
-         * @param {MouseEvent} mouseEvent 
-         */
-        const _onMouseClick = (mouseEvent) => {
-            this.mouseClicked = true;
-        }
-
-        window.addEventListener('mousemove', _onMouseMove);
-        window.addEventListener('click', _onMouseClick);
-
-        this._removeListeners = () => {
-            window.removeEventListener('mousemove', _onMouseMove);
-            window.removeEventListener('click', _onMouseClick);
-        }
     }
 
     /**
@@ -1338,7 +1426,7 @@ class UserInterface {
      * @returns True if the mouse is over the rectangle.
      */
     isHoveringRect(x, y, width, height) {
-        const pos = this.mousePosition;
+        const pos = this.space.getMousePosition(0);
         return pos[0] > x && pos[0] < x + width
             && pos[1] > y && pos[1] < y + height;
     }
@@ -1351,7 +1439,7 @@ class UserInterface {
      * @returns True if the mouse is over the circle.
      */
     isHoveringCircle(x, y, radius) {
-        const pos = this.mousePosition;
+        const pos = this.space.getMousePosition(0);
         return (x - pos[0])*(x - pos[0]) + (y - pos[1])*(y - pos[1]) < radius * radius;
     }
 
@@ -1372,7 +1460,7 @@ class UserInterface {
         const height = labelDims[1] + padding * 2;
 
         const isHovered = this.isHoveringRect(x, y, width, height);
-        const wentDown = isHovered && this.mouseClicked;
+        const wentDown = isHovered && Space.mouseClickedThisFrame;
 
         space.rectXY([x, y, 0], width, height,
             { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE });
@@ -1401,7 +1489,7 @@ class UserInterface {
         const radius = width*0.5 + padding;
 
         const isHovered = this.isHoveringCircle(x, y, radius);
-        const wentDown = isHovered && this.mouseClicked;
+        const wentDown = isHovered && Space.mouseClickedThisFrame;
 
         space.sphere([x, y, 0], radius, { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE })
         space.text(label, fontSize, [x-width*0.5, y-height*0.5, 0], {
@@ -1429,7 +1517,7 @@ class UserInterface {
         const height = labelDims[1] + padding * 2;
 
         const isHovered = this.isHoveringRect(x, y, width, height);
-        const wentDown = isHovered && this.mouseClicked;
+        const wentDown = isHovered && Space.mouseClickedThisFrame;
 
         let fill;
         if (isHovered) {
@@ -1467,16 +1555,7 @@ class UserInterface {
      * @returns {void}
      */
     onFrameEnd() {
-        this.mouseClicked = false;
         this.space.updateViewMatrix();
-    }
-
-    /** 
-     * Remove all event listeners set up in the constructor.
-     * @returns {void}
-     */
-    cleanUp() {
-        this._removeListeners();
     }
 }
 
@@ -1695,7 +1774,8 @@ function mainLoop(elapsedMs) {
 
     spaces.Perspective.resetSpaceRotation();
     spaces.Perspective.text('Perspective', 10, [-0.9, 0.9, 0], { fill: 'white' });
-    spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
+    // spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
+    spaces.Perspective.setSpaceRotation(Math.sin(1000 * 0.001), 0, 0);
     spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
 
     spaces.Front.resetSpaceRotation();
@@ -1712,6 +1792,8 @@ function mainLoop(elapsedMs) {
     spaces.Perspective.onFrameEnd();
     spaces.Front.onFrameEnd();
     spaces.Top.onFrameEnd();
+
+    Space.onFrameEnd();
     requestAnimationFrame(mainLoop);
 
 }
@@ -1752,6 +1834,9 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
 
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
+    Perspective.sphere(Perspective.getMousePosition(), 0.1, {fill: 'green', stroke: null});
+    // Perspective.ui.space.sphere(Perspective.ui.space.getMousePosition(), 0.1, {fill: 'red', stroke: null});
+
     Top.text(`${mappings.normalizedFlat.length}`, 12, [0, 0, 0], { fill: 'white' });
     Perspective.text(`${mappings.normalized.length}`, 12, [0, 0, 0], { fill: 'white' });
     Front.text(`${state.animState}`, 12, [-1, 0, -1], { fill: 'white' });
@@ -1770,6 +1855,8 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
 
     GUI.ui.label('My Label', 10, 70);
     GUI.ui.circleButton('My Circle Bttn', 50, 70);
+    // GUI.ui.space.debug();
+    // GUI.debug();
 
     if (GUI.ui.highlightButton('Toggle Bttn', state.animState === 1, 10, 30)) {
         state.animState = 1;
