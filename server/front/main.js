@@ -961,6 +961,7 @@ class Space {
         this.updateViewMatrix();
 
         if (!Space.removeListeners) {
+            const canvas = ctx.canvas;
             /**
              * @param {MouseEvent} mouseEvent 
              */
@@ -1473,16 +1474,6 @@ class Space {
     wasMouseButtonClicked(buttonIndex = 0) {
         return (Space.__mouseButtonsClickedThisFrame & (1 << buttonIndex)) > 0;
     }
-
-    debug() {
-        const amt = 10;
-        for (let x = 0; x <= amt; x++) {
-            for (let y = 0; y <= amt; y++) {
-                this.sphere(this.inverseMatrix.timesVector3(
-                    [x/amt*canvas.width, y/amt*canvas.height, 0]), 0.01, {fill: 'purple', stroke: null});
-            }
-        }
-    }
 }
 /**
  * @type {null | (() => void)}
@@ -1817,13 +1808,33 @@ class Spaces {
  * Primary state of the visualizer.
  * Stores the colors of the LEDs and any values
  * needed to calculate the next animation frame.
+ *
+ * @template SavedValues
  */
 class State {
     /** Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED. */
-    data = new Uint8Array(0)
+    data = new Uint8Array(0);
+    /**
+     * @type {SavedValues}
+     */
+    // @ts-ignore
+    saved = {};
+    /**
+     * @type {SavedValues}
+     */
+    // @ts-ignore
+    savedDefaults = {};
 
-
-    constructor() {
+    /**
+     * Creates a new `State` object. 
+     * Pass in an object literal for `savedDefaults` to
+     * make those values be the default values for properties that will
+     * be saved every time the server reports that a file has changed
+     * and the browser reloads.
+     * @param {SavedValues} savedDefaults
+     */
+    constructor(savedDefaults) {
+        this.savedDefaults = JSON.parse(JSON.stringify(savedDefaults));
         this.reset();
         this.tryRestoreFromSave();
 
@@ -1861,18 +1872,14 @@ class State {
      * Reset the state of all values that persist between reloads
      */
     reset() {
-        this.animState = 0;
-        this.lineX = 0;
+        this.saved = JSON.parse(JSON.stringify(this.savedDefaults));
     }
 
     /**
      * Save any data that should persist between reloads.
      */
     savePreReload() {
-        localStorage.setItem(State.STORAGE_KEY, JSON.stringify({
-            animState: this.animState,
-            lineX: this.lineX,
-        }));
+        localStorage.setItem(State.STORAGE_KEY, JSON.stringify(this.saved));
     }
 
     /**
@@ -1883,8 +1890,7 @@ class State {
         if (storedStr) {
             try {
                 const stored = JSON.parse(storedStr);
-                this.animState = stored.animState;
-                this.lineX = stored.lineX;
+                this.saved = {...this.saved, ...stored};
             } catch (error) {
                 localStorage.removeItem(State.STORAGE_KEY);
             }
@@ -1932,66 +1938,133 @@ class Mappings {
     }
 }
 
-const state = new State();
-const mappings = new Mappings(state);
-/** @type {HTMLCanvasElement} */
-const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
-/** @type {CanvasRenderingContext2D} */
-const ctx = canvas.getContext('2d');
-Space.autoResize(ctx);
-const spaces = new Spaces(ctx);
-
-
-/**
- * Main animation loop
- * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
- */
-function mainLoop(elapsedMs) {
+function beginMainLoop(state) {
+    const mappings = new Mappings(state);
+    /** @type {HTMLCanvasElement} */
+    const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
+    /** @type {CanvasRenderingContext2D} */
+    const ctx = canvas.getContext('2d');
     Space.autoResize(ctx);
-    const frames = spaces.Frames;
-    spaces.Frames.resetSpaceRotation();
-    frames.background(0x333333FF);
-    frames.rectXY([0, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-    frames.rectXY([0.5, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-    frames.rectXY([0.5, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-    frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-
-    spaces.Perspective.resetSpaceRotation();
-    spaces.Perspective.text('Perspective', 10, [-0.9, 0.9, 0], { fill: 'white' });
-    // spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
-    spaces.Perspective.setSpaceRotation(Math.sin(1000 * 0.001), 0, 0);
-    spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-
-    spaces.Front.resetSpaceRotation();
-    spaces.Front.text('Front', 10, [-0.9, 0.9, 0], { fill: 'white' });
-    spaces.Front.setSpaceRotation(-TAU / 4, 0, 0);
-    spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-
-    spaces.Top.resetSpaceRotation();
-    spaces.Top.text('Top', 10, [-0.9, 0.9, 0], { fill: 'white' });
-    spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-
-    tick(elapsedMs, spaces, mappings, state);
-    spaces.GUI.onFrameEnd();
-    spaces.Perspective.onFrameEnd();
-    spaces.Front.onFrameEnd();
-    spaces.Top.onFrameEnd();
-
-    Space.onFrameEnd();
-    requestAnimationFrame(mainLoop);
-
+    const spaces = new Spaces(ctx);
+    /**
+     * Main animation loop
+     * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
+     */
+    function _loop(elapsedMs) {
+        Space.autoResize(ctx);
+        const frames = spaces.Frames;
+        spaces.Frames.resetSpaceRotation();
+        frames.background(0x333333FF);
+        frames.rectXY([0, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+        frames.rectXY([0.5, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+        frames.rectXY([0.5, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+        frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+    
+        spaces.Perspective.resetSpaceRotation();
+        spaces.Perspective.text('Perspective', 10, [-0.9, 0.9, 0], { fill: 'white' });
+        spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
+        // spaces.Perspective.setSpaceRotation(Math.sin(1000 * 0.001), 0, 0);
+        spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+    
+        spaces.Front.resetSpaceRotation();
+        spaces.Front.text('Front', 10, [-0.9, 0.9, 0], { fill: 'white' });
+        spaces.Front.setSpaceRotation(-TAU / 4, 0, 0);
+        spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+    
+        spaces.Top.resetSpaceRotation();
+        spaces.Top.text('Top', 10, [-0.9, 0.9, 0], { fill: 'white' });
+        spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+    
+        loop(elapsedMs, spaces, mappings);
+        spaces.GUI.onFrameEnd();
+        spaces.Perspective.onFrameEnd();
+        spaces.Front.onFrameEnd();
+        spaces.Top.onFrameEnd();
+    
+        Space.onFrameEnd();
+        requestAnimationFrame(_loop);
+    
+    }
+    requestAnimationFrame(_loop);
 }
-requestAnimationFrame(mainLoop);
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////
+// *******************************************************************************************
+// Playground Below:
+// *******************************************************************************************
+
+const $state = new State(
+    /**
+     * Any values you set on the properties of this object
+     * will become "default" values for ```$state.saved```.
+     * You can freely change them inside the `loop` function
+     * and whatever changes you make will be saved to your browser
+     * even if you reload the page, unless you click the `reset` button,
+     * in which case the values will be reset to the default values specified below:
+     */
+    {
+        animState: 0,
+    }
+);
+beginMainLoop($state);
 
 /**
  * Animation tick function. Called at the screen refresh rate (typically 60x per second).
  * @param {number} elapsedMs Number of milliseconds elapsed since last tick
  * @param {Spaces} spaces 
  * @param {Mappings} mappings 
- * @param {State} state 
  */
-function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
+function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
+    /** 
+     * Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED.
+     * 
+     * ```
+     * Index:    0 1 2   3 4 5   6 7 8  ...
+     * Channel:  R,G,B,  R,G,B,  R,G,B  ...
+     * LED:        0       1       2    ...
+     * ```
+     * 
+     * - `$ledData[0]` corresponds to the Red channel of LED 0
+     * - `$ledData[1]` corresponds to the Green channel of LED 0
+     * - `$ledData[2]` corresponds to the Blue channel of LED 0
+     * - `$ledData[3]` corresponds to the Red channel of the LED 1
+     * - etc...
+     * 
+     * 
+     * - To change the Red channel of the `n`th LED, use 
+     * ```
+     * $ledData[n*3 + 0]
+     * ```
+     * - To change the Green channel of the `n`th LED, use 
+     * ```
+     * $ledData[n*3 + 1]
+     * ```
+     * - To change the Blue channel of the `n`th LED, use 
+     * ```
+     * $ledData[n*3 + 2]
+     * ```
+     */
+    const $ledData = $state.data;
+    /**
+     * Any modifications you make to the properties of `$saved` will stick around
+     * unless you click the reset button or call `$state.reset();`.
+     * You can freely add or remove properties to $saved by changing the object passed in
+     * above, where we do:
+     * ```
+     * const $state = new State(
+     *     {
+     *         ...
+     *     }
+     * );
+     * ```
+     */
+    const $saved = $state.saved;
+
+
     // Front.sphere([0, 0, 0], 0.1, { fill: 'red', stroke: 'green', thickness: 2 });
     // Front.sphere([0, 0, 0.2], 0.05, { fill: 'red', stroke: 'green', thickness: 2 });
 
@@ -2003,9 +2076,9 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
         let di = abs(x - pt[0]);
 
         if (di < 0.5) {
-            state.data[i * 3 + 0] = 255;
+            $ledData[i * 3 + 0] = 255;
         } else {
-            state.data[i * 3 + 0] = 0;
+            $ledData[i * 3 + 0] = 0;
         }
     }
 
@@ -2021,27 +2094,28 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
 
     Top.text(`${mappings.normalizedFlat.length}`, 12, [0, 0, 0], { fill: 'white' });
     Perspective.text(`${mappings.normalized.length}`, 12, [0, 0, 0], { fill: 'white' });
-    Front.text(`${state.animState}`, 12, [-1, 0, -1], { fill: 'white' });
-    // state.animState++;
-    const [w, h] = Front.measureText(`${state.animState}`, 12);
+    Front.text(`${$saved.animState}`, 12, [-1, 0, -1], { fill: 'white' });
+    // $persisted.animState++;
+    const [w, h] = Front.measureText(`${$saved.animState}`, 12);
     Front.line([-1, 0, -1], [-1 + w, 0, -1 + h], { color: 'red', thickness: 1 });
 
 
-    Front.drawLeds(mappings.normalized, state.data);
-    Top.drawLeds(mappings.normalizedFlat, state.data);
-    Perspective.drawLeds(mappings.normalized, state.data);
+    Front.drawLeds(mappings.normalized, $ledData);
+    Top.drawLeds(mappings.normalizedFlat, $ledData);
+    Perspective.drawLeds(mappings.normalized, $ledData);
 
     if (GUI.ui.button('Reset State', 10, 50)) {
-        state.reset();
+        $state.reset();
     }
 
-    GUI.ui.label('My Label', 10, 70);
+    GUI.ui.label(`My Default Values: ${JSON.stringify($state.savedDefaults)}`, 10, 100);
+    GUI.ui.label(`My Saved Values: ${JSON.stringify($saved)}`, 10, 90);
     GUI.ui.circleButton('My Circle Bttn', 50, 70);
     // GUI.ui.space.debug();
     // GUI.debug();
 
-    if (GUI.ui.highlightButton('Toggle Bttn', state.animState === 1, 10, 30)) {
-        state.animState = 1;
+    if (GUI.ui.highlightButton('Toggle Bttn', $saved.animState === 1, 10, 30)) {
+        $saved.animState = 1;
     }
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
@@ -2089,9 +2163,9 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //     // console.log(di);
     //     // line(x, 0, canvasPt[0], canvasPt[1]);
     //     // if (di < 0.5) {
-    //     //     state.data[i * 3 + 0] = 255;
+    //     //     $ledData[i * 3 + 0] = 255;
     //     // } else {
-    //     //     state.data[i * 3 + 0] = 0;
+    //     //     $ledData[i * 3 + 0] = 0;
     //     // }
 
     //     if (state.animState == 0) {
@@ -2099,9 +2173,9 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //         let distToVerticalLine = Math.abs(pt[0] - lineXNorm);
     //         if (distToVerticalLine < 0.3) {
     //             //red
-    //             state.data[i * 3 + 0] = 255;
+    //             $ledData[i * 3 + 0] = 255;
     //         } else {
-    //             state.data[i * 3 + 0] = 0;
+    //             $ledData[i * 3 + 0] = 0;
     //         }
     //     }
 
@@ -2112,9 +2186,9 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //         let dia = (Math.sin(elapsedMs * 0.001) + 1) * 0.5;
     //         ellipse(0, 0, dia, dia);
     //         if (length(pt[0], pt[1]) < dia) {
-    //             state.data[i * 3 + 0] = 255;
+    //             $ledData[i * 3 + 0] = 255;
     //         } else {
-    //             state.data[i * 3 + 0] = 0;
+    //             $ledData[i * 3 + 0] = 0;
     //         }
     //     }
 
@@ -2126,16 +2200,16 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //         line(0, 0, Math.sin(elapsedMs * 0.001), Math.cos(elapsedMs * 0.001));
     //         let dist = shortestDistance(pt[0], pt[1], 0, 0, (Math.sin(elapsedMs * 0.001) - 0) / 2, (Math.cos(elapsedMs * 0.001) - 0) / 2);
     //         if (dist < 0.4) {
-    //             state.data[i * 3 + 0] = 255;
+    //             $ledData[i * 3 + 0] = 255;
     //         } else {
-    //             state.data[i * 3 + 0] = 0;
+    //             $ledData[i * 3 + 0] = 0;
     //         }
     //     }
 
 
     //     //green and blue
-    //     state.data[i * 3 + 1] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
-    //     state.data[i * 3 + 2] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
+    //     $ledData[i * 3 + 1] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
+    //     $ledData[i * 3 + 2] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
     // }
 
     // noStroke();
@@ -2143,7 +2217,7 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //     const pt = normMapping[i];
 
     //     // Calculate the color of the current pixel:
-    //     const color = 0xFF | state.data[i * 3 + 2] << 8 | state.data[i * 3 + 1] << 16 | state.data[i * 3 + 0] << 24;
+    //     const color = 0xFF | $ledData[i * 3 + 2] << 8 | $ledData[i * 3 + 1] << 16 | $ledData[i * 3 + 0] << 24;
     //     fill(color);
     //     circle(pt[0], pt[1], 0.01);
     // }
@@ -2158,5 +2232,5 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     //     state.animState = 2;
     // }
 
-    state.trySendToMicrocontroller(state.data);
+    $state.trySendToMicrocontroller($ledData);
 }
