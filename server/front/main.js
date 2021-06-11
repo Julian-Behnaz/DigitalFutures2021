@@ -370,7 +370,7 @@ class Vector3 extends Array {
     static sqrMagnitude(vector) {
         return vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
     }
-    
+
     /**
      * Returns the dot product of `a` and `b`.
      * @param {iVector3} a
@@ -416,7 +416,7 @@ class Vector3 extends Array {
      * @returns {number}
      */
     static ilerp(a, b, vector) {
-        return (vector[0]-a[0])*(b[0]-a[0])+(vector[1]-a[1])*(b[1]-a[1])+(vector[2]-a[2])*(b[2]-a[2]);
+        return (vector[0] - a[0]) * (b[0] - a[0]) + (vector[1] - a[1]) * (b[1] - a[1]) + (vector[2] - a[2]) * (b[2] - a[2]);
     }
 }
 
@@ -757,17 +757,6 @@ class Matrix4x4 extends Array {
     }
 
     /**
-     * Returns a new matrix formed by rotating `this` around the x axis by `radians`.
-     * @param {number} radians - Angle to rotate by
-     * @returns {Matrix4x4}
-     */
-    rotX(radians) {
-        const mat = Matrix4x4.__temp;
-        Matrix4x4.fromXRotation(radians, mat);
-        return Matrix4x4.multiply(this, mat);
-    }
-
-    /**
      * Returns a rotation matrix that rotates around the x
      * axis by `radians`. If `out` is provided, modifies it
      * rather than creating a new matrix.
@@ -780,22 +769,11 @@ class Matrix4x4 extends Array {
             out = Matrix4x4.identity();
         }
         out.setValues(
-            1, 0, 0, 0,
-            0, Math.cos(radians), -Math.sin(radians), 0,
-            0, Math.sin(radians), Math.cos(radians), 0,
-            0, 0, 0, 1);
+            1,            0,             0, 0,
+            0, cos(radians), -sin(radians), 0,
+            0, sin(radians),  cos(radians), 0,
+            0,            0,             0, 1);
         return out;
-    }
-
-    /**
-     * Returns a new matrix formed by rotating `this` around the y axis by `radians`.
-     * @param {number} radians
-     * @returns {Matrix4x4}
-     */
-    rotY(radians) {
-        const mat = Matrix4x4.__temp;
-        Matrix4x4.fromYRotation(radians, mat);
-        return Matrix4x4.multiply(this, mat);
     }
 
     /**
@@ -811,22 +789,11 @@ class Matrix4x4 extends Array {
             out = Matrix4x4.identity();
         }
         out.setValues(
-            Math.cos(radians), 0, Math.sin(radians), 0,
-            0, 1, 0, 0,
-            -Math.sin(radians), 0, Math.cos(radians), 0,
-            0, 0, 0, 1);
+            cos(radians),  0, sin(radians), 0,
+            0,             1,            0, 0,
+            -sin(radians), 0, cos(radians), 0,
+            0,             0,            0, 1);
         return out;
-    }
-
-    /**
-     * Returns a new matrix formed by rotating `this` around the z axis by `radians`.
-     * @param {number} radians - Angle to rotate by
-     * @returns {Matrix4x4}
-     */
-    rotZ(radians) {
-        const mat = Matrix4x4.__temp;
-        Matrix4x4.fromZRotation(radians, mat);
-        return Matrix4x4.multiply(this, mat);
     }
 
     /**
@@ -842,11 +809,44 @@ class Matrix4x4 extends Array {
             out = Matrix4x4.identity();
         }
         out.setValues(
-            Math.cos(radians), -Math.sin(radians), 0, 0,
-            Math.sin(radians), Math.cos(radians), 0, 0,
-            0, 0, 1, 0,
-            0, 0, 0, 1);
+            cos(radians), -sin(radians), 0, 0,
+            sin(radians),  cos(radians), 0, 0,
+                       0,             0, 1, 0,
+                       0,             0, 0, 1);
         return out;
+    }
+
+    /**
+     * Returns a new matrix formed by rotating `this` around the x axis by `radians`.
+     * @param {number} radians - Angle to rotate by
+     * @returns {Matrix4x4}
+     */
+    rotX(radians) {
+        const mat = Matrix4x4.__temp;
+        Matrix4x4.fromXRotation(radians, mat);
+        return Matrix4x4.multiply(this, mat);
+    }
+
+    /**
+     * Returns a new matrix formed by rotating `this` around the y axis by `radians`.
+     * @param {number} radians
+     * @returns {Matrix4x4}
+     */
+    rotY(radians) {
+        const mat = Matrix4x4.__temp;
+        Matrix4x4.fromYRotation(radians, mat);
+        return Matrix4x4.multiply(this, mat);
+    }
+
+    /**
+     * Returns a new matrix formed by rotating `this` around the z axis by `radians`.
+     * @param {number} radians - Angle to rotate by
+     * @returns {Matrix4x4}
+     */
+    rotZ(radians) {
+        const mat = Matrix4x4.__temp;
+        Matrix4x4.fromZRotation(radians, mat);
+        return Matrix4x4.multiply(this, mat);
     }
 
     /**
@@ -967,18 +967,18 @@ class Space {
              */
             const _onMouseMove = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
-                Space.rawMousePosition[0] = mouseEvent.clientX * canvas.width/canvas.clientWidth;
-                Space.rawMousePosition[1] = mouseEvent.clientY * canvas.height/canvas.clientHeight;
+                Space.rawMousePosition[0] = mouseEvent.clientX * canvas.width / canvas.clientWidth;
+                Space.rawMousePosition[1] = mouseEvent.clientY * canvas.height / canvas.clientHeight;
                 Space.rawMousePosition[2] = 0;
             }
-    
+
             /**
              * @param {MouseEvent} mouseEvent 
              */
             const _onMouseClick = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
-                Space.__mouseButtonsClickedThisFrame = 
-                Space.__mouseButtonsClickedThisFrame | (1 << mouseEvent.button);
+                Space.__mouseButtonsClickedThisFrame =
+                    Space.__mouseButtonsClickedThisFrame | (1 << mouseEvent.button);
             }
 
             /**
@@ -994,12 +994,12 @@ class Space {
             const _onMouseUp = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
             }
-    
+
             window.addEventListener('mousemove', _onMouseMove);
             window.addEventListener('click', _onMouseClick);
             window.addEventListener('mousedown', _onMouseDown);
             window.addEventListener('mouseup', _onMouseUp);
-            
+
             Space.removeListeners = () => {
                 window.removeEventListener('mousemove', _onMouseMove);
                 window.removeEventListener('click', _onMouseClick);
@@ -1095,9 +1095,9 @@ class Space {
 
         // Also store the inverse of the view matrix, which we can calculate directly.
         // See https://lxjk.github.io/2017/09/03/Fast-4x4-Matrix-Inverse-with-SSE-SIMD-Explained.html
-        const iSx = 1/this.scale[0];
-        const iSy = 1/this.scale[1];
-        const iSz = 1/this.scale[2];
+        const iSx = 1 / this.scale[0];
+        const iSy = 1 / this.scale[1];
+        const iSz = 1 / this.scale[2];
         // 0 4 8  12
         // 1 5 9  13
         // 2 6 10 14
@@ -1319,7 +1319,7 @@ class Space {
 
         const scaleX = Math.abs(this.scale[0]);
         const spaceSize = this.initialSpaceMax - this.initialSpaceMin;
-        ctx.font = `${(size*scaleX*0.003*spaceSize)}px sans-serif`;
+        ctx.font = `${(size * scaleX * 0.003 * spaceSize)}px sans-serif`;
         ctx.fillStyle = this._canvasColor(fill);
         // ctx.fillText(text, pt[0], pt[1]);
         ctx.fillText(text, pt[0], pt[1]);
@@ -1338,11 +1338,11 @@ class Space {
         const scaleX = Math.abs(this.scale[0]);
         const scaleY = Math.abs(this.scale[1]);
         const spaceSize = this.initialSpaceMax - this.initialSpaceMin;
-        ctx.font = `${(size*scaleX*0.003*spaceSize)}px sans-serif`;
+        ctx.font = `${(size * scaleX * 0.003 * spaceSize)}px sans-serif`;
         const measurements = ctx.measureText(text);
 
         // const textWidth = measurements.width / scaleX;
-        const textWidth = 
+        const textWidth =
             (measurements.actualBoundingBoxRight + measurements.actualBoundingBoxLeft)
             / scaleX;
         // WARNING: these are relative to the baseline,
@@ -1357,7 +1357,7 @@ class Space {
      * Draw leds as spheres at the given positions using the values as the colors.
      * 
      * @param {iVector3[]} positions - Positions of each LED
-     * @param {Uint8Array} values - Each 3 values correspond to the R,G,B values of one LED. `values.length` must equal `3*positions.length`.
+     * @param {Uint8ClampedArray} values - Each 3 values correspond to the R,G,B values of one LED. `values.length` must equal `3*positions.length`.
      * @param {number} [radii] - Radius of each LED
      * @returns {void}
      */
@@ -1392,9 +1392,16 @@ class Space {
      * @param {number} zRadians - Rotation around z axis
      */
     setSpaceRotation(xRadians, yRadians, zRadians) {
-        Matrix4x4.fromXRotation(xRadians, this.rotationMatrix);
-        Matrix4x4.rotatedByY(this.rotationMatrix, yRadians, this.rotationMatrix);
-        Matrix4x4.rotatedByZ(this.rotationMatrix, zRadians, this.rotationMatrix);
+        // Matrix4x4.fromZRotation(xRadians, this.rotationMatrix);
+        // Matrix4x4.rotatedByY(this.rotationMatrix, yRadians, this.rotationMatrix);
+        // Matrix4x4.rotatedByX(this.rotationMatrix, zRadians, this.rotationMatrix);
+        const a = xRadians, b = yRadians, c = zRadians;
+        this.rotationMatrix.setValues(
+            cos(a)*cos(b), cos(a)*sin(b)*sin(c)-sin(a)*cos(c), cos(a)*sin(b)*cos(c)+sin(a)*sin(c), 0,
+            sin(a)*cos(b), sin(a)*sin(b)*sin(c)+cos(a)*cos(c), sin(a)*sin(b)*cos(c)-cos(a)*sin(c), 0,
+                  -sin(b),                      cos(b)*sin(c), cos(b)*cos(c),                      0,
+                  0,                                        0,             0,                      1,
+        )
         this.updateViewMatrix();
     }
 
@@ -1560,7 +1567,7 @@ class UserInterface {
      */
     isHoveringCircle(x, y, radius) {
         const pos = this.space.getMousePosition(0, this.__tempV3);
-        return (x - pos[0])*(x - pos[0]) + (y - pos[1])*(y - pos[1]) < radius * radius;
+        return (x - pos[0]) * (x - pos[0]) + (y - pos[1]) * (y - pos[1]) < radius * radius;
     }
 
     /** 
@@ -1598,7 +1605,7 @@ class UserInterface {
      * @param {number} y Center y coordinate of the button in UI space
      * @returns {boolean} True if the button was clicked this frame
      */
-     circleButton(label, x, y) {
+    circleButton(label, x, y) {
         const fontSize = 10;
         const space = this.space;
 
@@ -1606,13 +1613,13 @@ class UserInterface {
         const padding = labelDims[1] * 0.4;
         const width = labelDims[0];
         const height = labelDims[1];
-        const radius = width*0.5 + padding;
+        const radius = width * 0.5 + padding;
 
         const isHovered = this.isHoveringCircle(x, y, radius);
         const wentDown = isHovered && space.wasMouseButtonClicked(0);
 
         space.sphere([x, y, 0], radius, { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE })
-        space.text(label, fontSize, [x-width*0.5, y-height*0.5, 0], {
+        space.text(label, fontSize, [x - width * 0.5, y - height * 0.5, 0], {
             fill: isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE
         });
 
@@ -1649,7 +1656,7 @@ class UserInterface {
         }
         space.rectXY([x, y, 0], width, height, { fill });
         space.text(label, fontSize, [x + padding, y + padding, 0],
-            {fill: isHovered || isActive ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE});
+            { fill: isHovered || isActive ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE });
 
         return wentDown;
     }
@@ -1710,7 +1717,7 @@ class View extends Space {
             screenHeight,
             initialSpaceMin,
             initialSpaceMax);
-        const uiSpace = new Space(ctx, 
+        const uiSpace = new Space(ctx,
             screenX,
             screenY,
             screenWidth,
@@ -1737,7 +1744,7 @@ class View extends Space {
  * @param {iVector3[]} dataPoints
  * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
  */
- function computeBoundingBox(dataPoints) {
+function computeBoundingBox(dataPoints) {
     // Initialize a bounding box that contains nothing:
     /** @type {[number, number]} */
     const minMaxX = [Infinity, -Infinity];
@@ -1813,7 +1820,7 @@ class Spaces {
  */
 class State {
     /** Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED. */
-    data = new Uint8Array(0);
+    data = new Uint8ClampedArray(0);
     /**
      * @type {SavedValues}
      */
@@ -1890,7 +1897,7 @@ class State {
         if (storedStr) {
             try {
                 const stored = JSON.parse(storedStr);
-                this.saved = {...this.saved, ...stored};
+                this.saved = { ...this.saved, ...stored };
             } catch (error) {
                 localStorage.removeItem(State.STORAGE_KEY);
             }
@@ -1901,7 +1908,7 @@ class State {
      * Send the passed data to the server, which will pass it
      * on to the microcontroller if there is a connected microcontroller.
      * 
-     * @param {Uint8Array} data
+     * @param {Uint8ClampedArray} data
      */
     trySendToMicrocontroller(data) {
         if (this.dataWs.readyState === WebSocket.OPEN) {
@@ -1933,7 +1940,7 @@ class Mappings {
             this.normalized = mapPointsToNormalizedCoords(persp);
             this.normalizedFlat = mapPointsToNormalizedCoords(flat);
 
-            state.data = new Uint8Array(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
+            state.data = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
         });
     }
 }
@@ -1952,38 +1959,35 @@ function beginMainLoop(state) {
      */
     function _loop(elapsedMs) {
         Space.autoResize(ctx);
-        const frames = spaces.Frames;
-        spaces.Frames.resetSpaceRotation();
-        frames.background(0x333333FF);
-        frames.rectXY([0, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-        frames.rectXY([0.5, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-        frames.rectXY([0.5, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-        frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
-    
-        spaces.Perspective.resetSpaceRotation();
-        spaces.Perspective.text('Perspective', 10, [-0.9, 0.9, 0], { fill: 'white' });
-        spaces.Perspective.setSpaceRotation(Math.sin(elapsedMs * 0.001), 0, 0);
-        // spaces.Perspective.setSpaceRotation(Math.sin(1000 * 0.001), 0, 0);
-        spaces.Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    
-        spaces.Front.resetSpaceRotation();
-        spaces.Front.text('Front', 10, [-0.9, 0.9, 0], { fill: 'white' });
-        spaces.Front.setSpaceRotation(-TAU / 4, 0, 0);
-        spaces.Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    
-        spaces.Top.resetSpaceRotation();
-        spaces.Top.text('Top', 10, [-0.9, 0.9, 0], { fill: 'white' });
-        spaces.Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-    
+        const Frames = spaces.Frames;
+        const Perspective = spaces.Perspective;
+        const Front = spaces.Front;
+        const Top = spaces.Top;
+        Frames.resetSpaceRotation();
+        Frames.background(0x333333FF);
+        Frames.rectXY([0, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+        Frames.rectXY([0.5, 0, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+        Frames.rectXY([0.5, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+        Frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
+
+        Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+        Perspective.setSpaceRotation(0, elapsedMs * 0.0002, -TAU/3.5);
+        
+        Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+        Front.setSpaceRotation(0, 0, -TAU / 4);
+        
+        Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+        Top.setSpaceRotation(0, 0, 0);
+
         loop(elapsedMs, spaces, mappings);
         spaces.GUI.onFrameEnd();
         spaces.Perspective.onFrameEnd();
         spaces.Front.onFrameEnd();
         spaces.Top.onFrameEnd();
-    
+
         Space.onFrameEnd();
         requestAnimationFrame(_loop);
-    
+
     }
     requestAnimationFrame(_loop);
 }
@@ -2064,6 +2068,10 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
      */
     const $saved = $state.saved;
 
+    Front.ui.label(`Front [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
+    Perspective.ui.label(`Perspective [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
+    Top.ui.label(`Top [normalizedFlat:${mappings.normalizedFlat.length}]`, 5, 5, { fill: 'white' });
+
 
     // Front.sphere([0, 0, 0], 0.1, { fill: 'red', stroke: 'green', thickness: 2 });
     // Front.sphere([0, 0, 0.2], 0.05, { fill: 'red', stroke: 'green', thickness: 2 });
@@ -2089,16 +2097,7 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
 
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
-    Perspective.sphere(Perspective.getMousePosition(), 0.1, {fill: 'green', stroke: null});
-    // Perspective.ui.space.sphere(Perspective.ui.space.getMousePosition(), 0.1, {fill: 'red', stroke: null});
-
-    Top.text(`${mappings.normalizedFlat.length}`, 12, [0, 0, 0], { fill: 'white' });
-    Perspective.text(`${mappings.normalized.length}`, 12, [0, 0, 0], { fill: 'white' });
-    Front.text(`${$saved.animState}`, 12, [-1, 0, -1], { fill: 'white' });
-    // $persisted.animState++;
-    const [w, h] = Front.measureText(`${$saved.animState}`, 12);
-    Front.line([-1, 0, -1], [-1 + w, 0, -1 + h], { color: 'red', thickness: 1 });
-
+    Perspective.sphere(Perspective.getMousePosition(), 0.1, { fill: 'green', stroke: null });
 
     Front.drawLeds(mappings.normalized, $ledData);
     Top.drawLeds(mappings.normalizedFlat, $ledData);
@@ -2108,18 +2107,15 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
         $state.reset();
     }
 
-    GUI.ui.label(`My Default Values: ${JSON.stringify($state.savedDefaults)}`, 10, 100);
-    GUI.ui.label(`My Saved Values: ${JSON.stringify($saved)}`, 10, 90);
-    GUI.ui.circleButton('My Circle Bttn', 50, 70);
-    // GUI.ui.space.debug();
-    // GUI.debug();
+    GUI.ui.label(`My Default Values: ${JSON.stringify($state.savedDefaults)}`, 10, 90);
+    GUI.ui.label(`My Saved Values: ${JSON.stringify($saved)}`, 10, 80);
+    GUI.ui.circleButton('My Circle Bttn', 50, 60);
 
     if (GUI.ui.highlightButton('Toggle Bttn', $saved.animState === 1, 10, 30)) {
         $saved.animState = 1;
     }
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
-
 
     // const pixelsToNorm = 1 / ctx.canvas.clientHeight;
     // const bottom = -1;
@@ -2232,5 +2228,9 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     //     state.animState = 2;
     // }
 
+    /**
+     * Try to actually send the state of all the LEDs to the server,
+     * which will pass them along to a connected microcontroller.
+     */
     $state.trySendToMicrocontroller($ledData);
 }
