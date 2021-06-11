@@ -1,6 +1,64 @@
 // @ts-check
 'use strict';
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Common Mathematical Functions and Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/** 
+ * Universal circle constant τ. Represents the number of radians in a full turn.
+ */
+const TAU = Math.PI * 2;
+
+/**
+ * @override
+ * Returns the sine of a number.
+ * @param {number} radians A numeric expression that contains an angle measured in radians.
+ */
+const sin = Math.sin;
+
+/**
+ * Returns the cosine of a number.
+ * @param {number} radians A numeric expression that contains an angle measured in radians.
+ */
+const cos = Math.cos;
+
+/**
+ * Returns the counterclockwise angle between
+ * - the line segment from `<0,0>` to `<1,0>`
+ * - and the line segment from `<0,0>` to `<x,y>`
+ * The result will be between `-TAU/2` and `TAU/2`.
+ * 
+ * Be careful! The first parameter is `y` and not `x`!
+ * @param {number} y
+ * @param {number} x
+ * @returns {number}
+ */
+const atan2 = Math.atan2;
+
+/**
+ * Returns the absolute value of `value`
+ * @param {number} value
+ * @returns {number}
+ */
+const abs = Math.abs;
+
+/**
+ * Returns the minimum of `a` and `b`.
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+const min = Math.min;
+
+/**
+ * Returns the maximum of `a` and `b`.
+ * @param {number} a
+ * @param {number} b
+ * @returns {number}
+ */
+const max = Math.max;
+
 /**
  * Linearly interpolates between `a` and `b` via `t`.
  * Returns `a` if `t` is 0.
@@ -46,93 +104,42 @@ function linMap(inStart, inEnd, outStart, outEnd, inValue) {
 }
 
 /**
- * @param {number} x1
- * @param {number} y1
- * @param {number} x2
- * @param {number} y2
- * @returns {number} The distance between two points
+ * Returns the result of clamping value between `lo` and `hi`.
+ * - If `value` <= lo, returns `lo`.
+ * - If `value` >= hi, returns `hi`.
+ * - Else returns `value`.
+ * @param {number} lo
+ * @param {number} hi
+ * @param {number} value
+ * @returns {number} clamped value between `lo` and `hi`
  */
-function dist(x1, y1, x2, y2) {
-    return Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
+function clamp(lo, hi, value) {
+    return Math.min(Math.max(value, lo), hi);
 }
 
 /**
- * Computes the bounding box of a set of points, returning a 3d array where each element
- * is a 2d array containing the min and max extent of that dimension
- * @param {iVector3[]} dataPoints
- * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
+ * Returns the result of clamping value between `0` and `1`.
+ * @param {number} value
+ * @returns {number} clamped value between `0` and `1`
  */
-function computeBoundingBox(dataPoints) {
-    // Initialize a bounding box that contains nothing:
-    /** @type {[number, number]} */
-    const minMaxX = [Infinity, -Infinity];
-    /** @type {[number, number]} */
-    const minMaxY = [Infinity, -Infinity];
-    /** @type {[number, number]} */
-    const minMaxZ = [Infinity, -Infinity];
-
-    // Loop through all the points and compute their
-    // minimum and maximum extents on every axis:
-    for (let i = 0; i < dataPoints.length; i++) {
-        const pt = dataPoints[i];
-        // Only allow the point to modify the extents if it is
-        // not alreay encompassed in the bounds
-        minMaxX[0] = Math.min(minMaxX[0], pt[0]);
-        minMaxX[1] = Math.max(minMaxX[1], pt[0]);
-
-        minMaxY[0] = Math.min(minMaxY[0], pt[1]);
-        minMaxY[1] = Math.max(minMaxY[1], pt[1]);
-
-        minMaxZ[0] = Math.min(minMaxZ[0], pt[2]);
-        minMaxZ[1] = Math.max(minMaxZ[1], pt[2]);
-    }
-    return [minMaxX, minMaxY, minMaxZ];
+function clamp01(value) {
+    return Math.min(Math.max(value, 0), 1);
 }
 
-/**
- * Given some data points, converts them to points in a normalized coordinate space.
- * such that the max values are at 1 or -1.
- * @param {iVector3[]} dataPoints
- * @returns {[x: number, y: number, z: number][]}
- */
-function mapPointsToNormalizedCoords(dataPoints) {
-    const bounds = computeBoundingBox(dataPoints);
-
-    let maxBoundValue = -Infinity;
-    for (let i = 0; i < bounds.length; i++) {
-        const axisMinMax = bounds[i];
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[0]));
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[1]));
-    }
-    const scaleFactor = 1 / maxBoundValue;
-
-    const normalizedPoints = [];
-    for (let i = 0; i < dataPoints.length; i++) {
-        const pt = dataPoints[i];
-        /** @type {[x: number, y: number, z: number]} */
-        const scaledPt = [pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor];
-        normalizedPoints.push(scaledPt);
-    }
-    return normalizedPoints;
-}
-
-/**
- * Auto-resize the canvas to have the same number of pixels as the actual screen.
- * @param {CanvasRenderingContext2D} ctx
- */
-function autoResize(ctx) {
-    const canvas = ctx.canvas;
-    const desWidth = canvas.clientWidth * devicePixelRatio;
-    const desHeight = canvas.clientHeight * devicePixelRatio;
-    if (desWidth !== canvas.width || desHeight !== canvas.height) {
-        canvas.width = desWidth;
-        canvas.height = desHeight;
-    }
-}
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @typedef {[x: number, y: number, z: number]|Vector3|Array<number, 3>} iVector3
+ */
+
+/**
+ * A Vector class with helper methods for adding, subtracting, scaling, lerping,
+ * and otherwise manipulating 3D vectors.
+ * 
+ * A Vector has a direction and a magnitude, but no position.
+ * You can use vectors to represent positions if you consider the vector as describing
+ * a translation from the origin at `<0,0,0>` to a point.
  */
 class Vector3 extends Array {
     /** 
@@ -413,6 +420,28 @@ class Vector3 extends Array {
     }
 }
 
+/**
+ * A Matrix class with helper methods for multiplying, adding, subtracting, rotating,
+ * and otherwise manipulating 4x4 matrices.
+ * 
+ * *You likely won't need to use this class directly.*
+ * 
+ * This framework is primarily concerned with "homogenous" 4x4 matrices, which
+ * we can use to translate, rotate, and scale vectors and other matrices.
+ * Such a matrix has this form, where `I`, `J`, and `K` define the orthogonal basis vectors
+ * of a space, which allow you to represent rotation and scale, and
+ * the `T` vector defines a translation.
+ * 
+ * ```
+ * | Ix Jx Kx Tx |
+ * | Iy Jy Ky Ty |
+ * | Iz Jz Kz Tz |
+ * | 0  0  0  1  |
+ * ```
+ * 
+ * You can find out more about matrices from the great Essence of Linear Algebra series. 
+ * https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab
+ */
 class Matrix4x4 extends Array {
     /**
      * @private
@@ -1484,6 +1513,19 @@ Space.onFrameEnd = () => {
     // @ts-ignore
     Space.__mouseButtonsClickedThisFrame = 0;
 };
+/**
+ * Auto-resize the canvas to have the same number of pixels as the actual screen.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+Space.autoResize = (ctx) => {
+    const canvas = ctx.canvas;
+    const desWidth = canvas.clientWidth * devicePixelRatio;
+    const desHeight = canvas.clientHeight * devicePixelRatio;
+    if (desWidth !== canvas.width || desHeight !== canvas.height) {
+        canvas.width = desWidth;
+        canvas.height = desHeight;
+    }
+}
 
 class UserInterface {
     COLOR_IDLE = 'black'
@@ -1698,6 +1740,66 @@ class View extends Space {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Computes the bounding box of a set of points, returning a 3d array where each element
+ * is a 2d array containing the min and max extent of that dimension
+ * @param {iVector3[]} dataPoints
+ * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
+ */
+ function computeBoundingBox(dataPoints) {
+    // Initialize a bounding box that contains nothing:
+    /** @type {[number, number]} */
+    const minMaxX = [Infinity, -Infinity];
+    /** @type {[number, number]} */
+    const minMaxY = [Infinity, -Infinity];
+    /** @type {[number, number]} */
+    const minMaxZ = [Infinity, -Infinity];
+
+    // Loop through all the points and compute their
+    // minimum and maximum extents on every axis:
+    for (let i = 0; i < dataPoints.length; i++) {
+        const pt = dataPoints[i];
+        // Only allow the point to modify the extents if it is
+        // not alreay encompassed in the bounds
+        minMaxX[0] = Math.min(minMaxX[0], pt[0]);
+        minMaxX[1] = Math.max(minMaxX[1], pt[0]);
+
+        minMaxY[0] = Math.min(minMaxY[0], pt[1]);
+        minMaxY[1] = Math.max(minMaxY[1], pt[1]);
+
+        minMaxZ[0] = Math.min(minMaxZ[0], pt[2]);
+        minMaxZ[1] = Math.max(minMaxZ[1], pt[2]);
+    }
+    return [minMaxX, minMaxY, minMaxZ];
+}
+
+/**
+ * Given some data points, converts them to points in a normalized coordinate space.
+ * such that the max values are at 1 or -1.
+ * @param {iVector3[]} dataPoints
+ * @returns {[x: number, y: number, z: number][]}
+ */
+function mapPointsToNormalizedCoords(dataPoints) {
+    const bounds = computeBoundingBox(dataPoints);
+
+    let maxBoundValue = -Infinity;
+    for (let i = 0; i < bounds.length; i++) {
+        const axisMinMax = bounds[i];
+        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[0]));
+        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[1]));
+    }
+    const scaleFactor = 1 / maxBoundValue;
+
+    const normalizedPoints = [];
+    for (let i = 0; i < dataPoints.length; i++) {
+        const pt = dataPoints[i];
+        /** @type {[x: number, y: number, z: number]} */
+        const scaledPt = [pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor];
+        normalizedPoints.push(scaledPt);
+    }
+    return normalizedPoints;
+}
+
 class Spaces {
     /**
      * @param {CanvasRenderingContext2D} ctx 
@@ -1830,18 +1932,13 @@ class Mappings {
     }
 }
 
-/** Circle constant -- radians in a full circle */
-const TAU = Math.PI * 2;
-
-// const UI = new UserInterface(ctx);
-
 const state = new State();
 const mappings = new Mappings(state);
 /** @type {HTMLCanvasElement} */
 const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
 /** @type {CanvasRenderingContext2D} */
 const ctx = canvas.getContext('2d');
-autoResize(ctx);
+Space.autoResize(ctx);
 const spaces = new Spaces(ctx);
 
 
@@ -1850,7 +1947,7 @@ const spaces = new Spaces(ctx);
  * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
  */
 function mainLoop(elapsedMs) {
-    autoResize(ctx);
+    Space.autoResize(ctx);
     const frames = spaces.Frames;
     spaces.Frames.resetSpaceRotation();
     frames.background(0x333333FF);
@@ -1899,11 +1996,11 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
     // Front.sphere([0, 0, 0.2], 0.05, { fill: 'red', stroke: 'green', thickness: 2 });
 
     const points = mappings.normalized;
-    let x = Math.sin(elapsedMs * 0.0007);
+    let x = sin(elapsedMs * 0.0007);
     for (let i = 0; i < points.length; i++) {
         let pt = points[i];
         // let di = dist(x, 0, pt[0], pt[1]);
-        let di = Math.abs(x - pt[0]);
+        let di = abs(x - pt[0]);
 
         if (di < 0.5) {
             state.data[i * 3 + 0] = 255;
@@ -1911,8 +2008,6 @@ function tick(elapsedMs, { Front, Perspective, Top, GUI }, mappings, state) {
             state.data[i * 3 + 0] = 0;
         }
     }
-
-
 
     Front.line([x, 0, 1], [x, 0, -1], { color: 'red', thickness: 6 });
     Perspective.line([x, 0, 1], [x, 0, -1], { color: 'red', thickness: 6 });
