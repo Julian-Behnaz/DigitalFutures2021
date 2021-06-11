@@ -931,11 +931,12 @@ class Space {
 
         this.updateViewMatrix();
 
-        if (!Space.__removeListeners) {
+        if (!Space.removeListeners) {
             /**
              * @param {MouseEvent} mouseEvent 
              */
             const _onMouseMove = (mouseEvent) => {
+                Space.__mouseButtons = mouseEvent.buttons;
                 Space.rawMousePosition[0] = mouseEvent.clientX * canvas.width/canvas.clientWidth;
                 Space.rawMousePosition[1] = mouseEvent.clientY * canvas.height/canvas.clientHeight;
                 Space.rawMousePosition[2] = 0;
@@ -945,15 +946,35 @@ class Space {
              * @param {MouseEvent} mouseEvent 
              */
             const _onMouseClick = (mouseEvent) => {
-                Space.mouseClickedThisFrame = true;
+                Space.__mouseButtons = mouseEvent.buttons;
+                Space.__mouseButtonsClickedThisFrame = 
+                Space.__mouseButtonsClickedThisFrame | (1 << mouseEvent.button);
+            }
+
+            /**
+             * @param {MouseEvent} mouseEvent 
+             */
+            const _onMouseDown = (mouseEvent) => {
+                Space.__mouseButtons = mouseEvent.buttons;
+            }
+
+            /**
+             * @param {MouseEvent} mouseEvent 
+             */
+            const _onMouseUp = (mouseEvent) => {
+                Space.__mouseButtons = mouseEvent.buttons;
             }
     
             window.addEventListener('mousemove', _onMouseMove);
             window.addEventListener('click', _onMouseClick);
-    
-            Space.__removeListeners = () => {
+            window.addEventListener('mousedown', _onMouseDown);
+            window.addEventListener('mouseup', _onMouseUp);
+            
+            Space.removeListeners = () => {
                 window.removeEventListener('mousemove', _onMouseMove);
                 window.removeEventListener('click', _onMouseClick);
+                window.removeEventListener('mousedown', _onMouseDown);
+                window.removeEventListener('mouseup', _onMouseUp);
             }
         }
     }
@@ -1374,6 +1395,17 @@ class Space {
         this.updateViewMatrix();
     }
 
+    /**
+     * Returns the mouse position relative to this space.
+     * Use the optional `depth` parameter to choose the
+     * z-plane of the mouse prior to translating it into the
+     * space's coordinate system.
+     * Overwrites and returns `out` if provided; otherwise
+     * returns a new vector as the result.
+     * @param {number} [depth] - [OPTIONAL] - z-plane to use for the mouse pre-transformation
+     * @param {Vector3} [out] - [OPTIONAL] - modified if provided
+     * @returns {Vector3} - mouse position transformed into this space
+     */
     getMousePosition(depth = 0, out) {
         if (out === undefined) {
             out = Vector3.zero();
@@ -1381,6 +1413,36 @@ class Space {
         Space.rawMousePosition.copyTo(out);
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
+     * Returns `true` if the given mouse button is held down.
+     * If `buttonIndex` is not provided, defaults to checking the Primary (left) mouse button.
+     * @param {0|1|2|3|4} buttonIndex Index of the button:
+     * - 0 = Primary (Left) Button
+     * - 1 = Secondary (Right) Button
+     * - 2 = Auxillary (Middle) Button
+     * - 3 = 4th Button (usually "Browser Back")
+     * - 4 = 5th Button (usually "Browser Forward")
+     * @returns {boolean}
+     */
+    isMouseButtonHeld(buttonIndex = 0) {
+        return (Space.__mouseButtons & (1 << buttonIndex)) > 0;
+    }
+
+    /**
+     * Returns `true` if the given mouse button was clicked some time this frame.
+     * If `buttonIndex` is not provided, defaults to checking the Primary (left) mouse button.
+     * @param {0|1|2|3|4} buttonIndex Index of the button:
+     * - 0 = Primary (Left) Button
+     * - 1 = Secondary (Right) Button
+     * - 2 = Auxillary (Middle) Button
+     * - 3 = 4th Button (usually "Browser Back")
+     * - 4 = 5th Button (usually "Browser Forward")
+     * @returns {boolean}
+     */
+    wasMouseButtonClicked(buttonIndex = 0) {
+        return (Space.__mouseButtonsClickedThisFrame & (1 << buttonIndex)) > 0;
     }
 
     debug() {
@@ -1393,11 +1455,34 @@ class Space {
         }
     }
 }
-Space.__removeListeners = null;
+/**
+ * @type {null | (() => void)}
+ */
+Space.removeListeners = null;
+/**
+ * Raw position of the mouse in canvas coordinates,
+ * where <0, 0, 0> is in the top left and <canvas.width, canvas.height, 0>
+ * is at the bottom right.
+ */
 Space.rawMousePosition = Vector3.zero();
-Space.mouseClickedThisFrame = false;
+/**
+ * @private
+ * Bitfield indicating which buttons are currently held.
+ */
+// @ts-ignore
+Space.__mouseButtons = 0;
+/**
+ * @private
+ * Bitfield indicating which buttons were clicked this frame.
+ */
+// @ts-ignore
+Space.__mouseButtonsClickedThisFrame = 0;
+/**
+ * Must be called once at the end of every frame.
+ */
 Space.onFrameEnd = () => {
-    Space.mouseClickedThisFrame = false;
+    // @ts-ignore
+    Space.__mouseButtonsClickedThisFrame = 0;
 };
 
 class UserInterface {
@@ -1407,8 +1492,10 @@ class UserInterface {
     COLOR_TEXT_IDLE = 'white'
     COLOR_TEXT_HOVERED = 'black'
 
-    /** @type {Vector3} Position of the mouse in normalized coordinates. */
-    mousePosition = Vector3.zero();
+    /**
+     * @private 
+     * @type {Vector3} */
+    __tempV3 = Vector3.zero();
 
     /**
      * @param {Space} space
@@ -1426,7 +1513,7 @@ class UserInterface {
      * @returns True if the mouse is over the rectangle.
      */
     isHoveringRect(x, y, width, height) {
-        const pos = this.space.getMousePosition(0);
+        const pos = this.space.getMousePosition(0, this.__tempV3);
         return pos[0] > x && pos[0] < x + width
             && pos[1] > y && pos[1] < y + height;
     }
@@ -1439,7 +1526,7 @@ class UserInterface {
      * @returns True if the mouse is over the circle.
      */
     isHoveringCircle(x, y, radius) {
-        const pos = this.space.getMousePosition(0);
+        const pos = this.space.getMousePosition(0, this.__tempV3);
         return (x - pos[0])*(x - pos[0]) + (y - pos[1])*(y - pos[1]) < radius * radius;
     }
 
@@ -1460,7 +1547,7 @@ class UserInterface {
         const height = labelDims[1] + padding * 2;
 
         const isHovered = this.isHoveringRect(x, y, width, height);
-        const wentDown = isHovered && Space.mouseClickedThisFrame;
+        const wentDown = isHovered && space.wasMouseButtonClicked(0);
 
         space.rectXY([x, y, 0], width, height,
             { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE });
@@ -1489,7 +1576,7 @@ class UserInterface {
         const radius = width*0.5 + padding;
 
         const isHovered = this.isHoveringCircle(x, y, radius);
-        const wentDown = isHovered && Space.mouseClickedThisFrame;
+        const wentDown = isHovered && space.wasMouseButtonClicked(0);
 
         space.sphere([x, y, 0], radius, { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE })
         space.text(label, fontSize, [x-width*0.5, y-height*0.5, 0], {
@@ -1517,7 +1604,7 @@ class UserInterface {
         const height = labelDims[1] + padding * 2;
 
         const isHovered = this.isHoveringRect(x, y, width, height);
-        const wentDown = isHovered && Space.mouseClickedThisFrame;
+        const wentDown = isHovered && space.wasMouseButtonClicked(0);
 
         let fill;
         if (isHovered) {
