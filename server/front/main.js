@@ -1071,16 +1071,16 @@ class Space {
         const left = canvas.width * this.screenX;
         const top = canvas.height * this.screenY;
 
-        const minDim = Math.min(canvas.height, canvas.width);
-        const xDim = this.squareAspect ? minDim : canvas.width;
-        const yDim = this.squareAspect ? minDim : canvas.height;
-        const zDim = this.squareAspect ? minDim : canvas.height;
+        const minDim = Math.min(canvas.height*this.screenHeight, canvas.width*this.screenWidth);
+        const xDim = this.squareAspect ? minDim : canvas.width * this.screenWidth;
+        const yDim = this.squareAspect ? minDim : canvas.height * this.screenHeight;
+        const zDim = minDim;
         const spaceDif = this.initialSpaceMax - this.initialSpaceMin;
         const spaceOffset = ilerp(this.initialSpaceMin, this.initialSpaceMax, 0);
 
-        this.scale[0] = (xDim / spaceDif) * this.screenWidth;
-        this.scale[1] = -(yDim / spaceDif) * this.screenHeight;
-        this.scale[2] = zDim / spaceDif * Math.min(this.screenWidth, this.screenHeight);
+        this.scale[0] = (xDim / spaceDif);
+        this.scale[1] = -(yDim / spaceDif);
+        this.scale[2] = zDim / spaceDif;
         this.translation[0] = canvas.width * this.screenWidth * spaceOffset + left;
         this.translation[1] = canvas.height - (canvas.height * this.screenHeight * spaceOffset + top);
         this.translation[2] = 0;
@@ -1443,11 +1443,37 @@ class Space {
      * @param {Vector3} [out] - [OPTIONAL] - modified if provided
      * @returns {Vector3} - mouse position transformed into this space
      */
-    getMousePosition(depth = 0, out) {
+    getMousePositionUnclamped(depth = 0, out) {
         if (out === undefined) {
             out = Vector3.zero();
         }
         Space.rawMousePosition.copyTo(out);
+        out[2] = depth;
+        return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
+     * Returns the mouse position relative to this space.
+     * Use the optional `depth` parameter to choose the
+     * z-plane of the mouse prior to translating it into the
+     * space's coordinate system.
+     * Overwrites and returns `out` if provided; otherwise
+     * returns a new vector as the result.
+     * @param {number} [depth] - [OPTIONAL] - z-plane to use for the mouse pre-transformation
+     * @param {Vector3} [out] - [OPTIONAL] - modified if provided
+     * @returns {Vector3} - mouse position transformed into this space
+     */
+    getMousePosition(depth = 0, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const rawPos = Space.rawMousePosition;
+        const canvas = this.ctx.canvas;
+        out[0] = clamp(this.screenX*canvas.width, (this.screenX+this.screenWidth)*canvas.width, rawPos[0]);
+        out[1] = canvas.height - clamp(
+            this.screenY*canvas.height, 
+            (this.screenY+this.screenHeight)*canvas.height, 
+            canvas.height - rawPos[1]);
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
     }
@@ -2098,6 +2124,9 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
     Perspective.sphere(Perspective.getMousePosition(), 0.1, { fill: 'green', stroke: null });
+    Top.sphere(Top.getMousePosition(), 0.1, { fill: 'blue', stroke: null });
+    Front.sphere(Front.getMousePosition(), 0.1, { fill: 'yellow', stroke: null });
+    GUI.sphere(GUI.getMousePosition(), 0.1, { fill: 'red', stroke: null });
 
     Front.drawLeds(mappings.normalized, $ledData);
     Top.drawLeds(mappings.normalizedFlat, $ledData);
