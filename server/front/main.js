@@ -505,11 +505,13 @@ class Matrix4x4 extends Array {
      * @param {number} m44 
      * @returns {Matrix4x4}
      */
-    static create(m11, m12, m13, m14,
+    static create(
+        m11, m12, m13, m14,
         m21, m22, m23, m24,
         m31, m32, m33, m34,
         m41, m42, m43, m44) {
-        return new Matrix4x4(m11, m12, m13, m14,
+        return new Matrix4x4(
+            m11, m12, m13, m14,
             m21, m22, m23, m24,
             m31, m32, m33, m34,
             m41, m42, m43, m44);
@@ -545,7 +547,8 @@ class Matrix4x4 extends Array {
      * @param {number} m44 
      * @returns {void}
      */
-    setValues(m11, m12, m13, m14,
+    setValues(
+        m11, m12, m13, m14,
         m21, m22, m23, m24,
         m31, m32, m33, m34,
         m41, m42, m43, m44) {
@@ -645,7 +648,7 @@ class Matrix4x4 extends Array {
         if (out === undefined) {
             out = Matrix4x4.identity();
         }
-        const res = Matrix4x4.__temp;
+        const res = Matrix4x4.__temp2;
         for (let i = 0; i < 4; i++) {
             for (let j = 0; j < 4; j++) {
                 let cij = 0;
@@ -769,10 +772,10 @@ class Matrix4x4 extends Array {
             out = Matrix4x4.identity();
         }
         out.setValues(
-            1,            0,             0, 0,
+            1, 0, 0, 0,
             0, cos(radians), -sin(radians), 0,
-            0, sin(radians),  cos(radians), 0,
-            0,            0,             0, 1);
+            0, sin(radians), cos(radians), 0,
+            0, 0, 0, 1);
         return out;
     }
 
@@ -789,10 +792,10 @@ class Matrix4x4 extends Array {
             out = Matrix4x4.identity();
         }
         out.setValues(
-            cos(radians),  0, sin(radians), 0,
-            0,             1,            0, 0,
+            cos(radians), 0, sin(radians), 0,
+            0, 1, 0, 0,
             -sin(radians), 0, cos(radians), 0,
-            0,             0,            0, 1);
+            0, 0, 0, 1);
         return out;
     }
 
@@ -810,9 +813,9 @@ class Matrix4x4 extends Array {
         }
         out.setValues(
             cos(radians), -sin(radians), 0, 0,
-            sin(radians),  cos(radians), 0, 0,
-                       0,             0, 1, 0,
-                       0,             0, 0, 1);
+            sin(radians), cos(radians), 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1);
         return out;
     }
 
@@ -911,6 +914,14 @@ class Matrix4x4 extends Array {
  */
 // @ts-ignore
 Matrix4x4.__temp = Matrix4x4.identity();
+/**
+ * @private
+ * DO NOT USE.
+ * Internal temporary matrix used to reduce
+ * allocations when doing matrix math.
+ */
+// @ts-ignore
+Matrix4x4.__temp2 = Matrix4x4.identity();
 
 class Space {
     /**
@@ -1071,7 +1082,7 @@ class Space {
         const left = canvas.width * this.screenX;
         const top = canvas.height * this.screenY;
 
-        const minDim = Math.min(canvas.height*this.screenHeight, canvas.width*this.screenWidth);
+        const minDim = Math.min(canvas.height * this.screenHeight, canvas.width * this.screenWidth);
         const xDim = this.squareAspect ? minDim : canvas.width * this.screenWidth;
         const yDim = this.squareAspect ? minDim : canvas.height * this.screenHeight;
         const zDim = minDim;
@@ -1397,10 +1408,10 @@ class Space {
         // Matrix4x4.rotatedByX(this.rotationMatrix, zRadians, this.rotationMatrix);
         const a = xRadians, b = yRadians, c = zRadians;
         this.rotationMatrix.setValues(
-            cos(a)*cos(b), cos(a)*sin(b)*sin(c)-sin(a)*cos(c), cos(a)*sin(b)*cos(c)+sin(a)*sin(c), 0,
-            sin(a)*cos(b), sin(a)*sin(b)*sin(c)+cos(a)*cos(c), sin(a)*sin(b)*cos(c)-cos(a)*sin(c), 0,
-                  -sin(b),                      cos(b)*sin(c), cos(b)*cos(c),                      0,
-                  0,                                        0,             0,                      1,
+            cos(a) * cos(b), cos(a) * sin(b) * sin(c) - sin(a) * cos(c), cos(a) * sin(b) * cos(c) + sin(a) * sin(c), 0,
+            sin(a) * cos(b), sin(a) * sin(b) * sin(c) + cos(a) * cos(c), sin(a) * sin(b) * cos(c) - cos(a) * sin(c), 0,
+            -sin(b), cos(b) * sin(c), cos(b) * cos(c), 0,
+            0, 0, 0, 1,
         )
         this.updateViewMatrix();
     }
@@ -1458,6 +1469,94 @@ class Space {
     }
 
     /**
+     * Returns the top left point of the space in the space's coordinate system.
+     * Use the optional `depth` parameter to choose the
+     * z-plane of the point prior to translating it into the
+     * space's coordinate system.
+     * Overwrites and returns `out` if provided; otherwise
+     * returns a new vector as the result.
+     * @param {number} depth 
+     * @param {Vector3} out 
+     * @returns 
+     */
+    getTopLeftPoint(depth = 0, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const canvas = this.ctx.canvas;
+        out[0] = this.screenX * canvas.width;
+        out[1] = (this.screenY + this.screenHeight) * canvas.height;
+        out[2] = depth;
+        return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
+     * Returns the top right point of the space in the space's coordinate system.
+     * Use the optional `depth` parameter to choose the
+     * z-plane of the point prior to translating it into the
+     * space's coordinate system.
+     * Overwrites and returns `out` if provided; otherwise
+     * returns a new vector as the result.
+     * @param {number} depth 
+     * @param {Vector3} out 
+     * @returns 
+     */
+    getTopRightPoint(depth = 0, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const canvas = this.ctx.canvas;
+        out[0] = (this.screenX + this.screenWidth) * canvas.width;
+        out[1] = (this.screenY + this.screenHeight) * canvas.height;
+        out[2] = depth;
+        return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
+     * Returns the bottom right point of the space in the space's coordinate system.
+     * Use the optional `depth` parameter to choose the
+     * z-plane of the point prior to translating it into the
+     * space's coordinate system.
+     * Overwrites and returns `out` if provided; otherwise
+     * returns a new vector as the result.
+     * @param {number} depth 
+     * @param {Vector3} out 
+     * @returns 
+     */
+    getBottomRightPoint(depth = 0, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const canvas = this.ctx.canvas;
+        out[0] = (this.screenX + this.screenWidth) * canvas.width;
+        out[1] = this.screenY * canvas.height;
+        out[2] = depth;
+        return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
+     * Returns the bottom left point of the space in the space's coordinate system.
+     * Use the optional `depth` parameter to choose the
+     * z-plane of the point prior to translating it into the
+     * space's coordinate system.
+     * Overwrites and returns `out` if provided; otherwise
+     * returns a new vector as the result.
+     * @param {number} depth 
+     * @param {Vector3} out 
+     * @returns 
+     */
+    getBottomLeftPoint(depth = 0, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const canvas = this.ctx.canvas;
+        out[0] = this.screenX * canvas.width;
+        out[1] = this.screenY * canvas.height;
+        out[2] = depth;
+        return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
      * Returns the mouse position relative to this space.
      * The result will be clamped such that the mouse position
      * may not move outside the bounds of the space.
@@ -1480,10 +1579,10 @@ class Space {
         }
         const rawPos = Space.rawMousePosition;
         const canvas = this.ctx.canvas;
-        out[0] = clamp(this.screenX*canvas.width, (this.screenX+this.screenWidth)*canvas.width, rawPos[0]);
+        out[0] = clamp(this.screenX * canvas.width, (this.screenX + this.screenWidth) * canvas.width, rawPos[0]);
         out[1] = canvas.height - clamp(
-            this.screenY*canvas.height, 
-            (this.screenY+this.screenHeight)*canvas.height, 
+            this.screenY * canvas.height,
+            (this.screenY + this.screenHeight) * canvas.height,
             canvas.height - rawPos[1]);
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
@@ -1497,10 +1596,10 @@ class Space {
     isMouseWithinSpace() {
         const rawPos = Space.rawMousePosition;
         const canvas = this.ctx.canvas;
-        return rawPos[0] >= this.screenX*canvas.width 
-            && rawPos[0] <= (this.screenX+this.screenWidth)*canvas.width
-            && canvas.height - rawPos[1] >= this.screenY*canvas.height
-            && canvas.height - rawPos[1] <= (this.screenY+this.screenHeight)*canvas.height;
+        return rawPos[0] >= this.screenX * canvas.width
+            && rawPos[0] <= (this.screenX + this.screenWidth) * canvas.width
+            && canvas.height - rawPos[1] >= this.screenY * canvas.height
+            && canvas.height - rawPos[1] <= (this.screenY + this.screenHeight) * canvas.height;
     }
 
     /**
@@ -1582,6 +1681,7 @@ class UserInterface {
     COLOR_ACTIVE = 'yellow'
     COLOR_TEXT_IDLE = 'white'
     COLOR_TEXT_HOVERED = 'black'
+    UI_TEXT_SIZE = 10
 
     /**
      * @private 
@@ -1596,17 +1696,57 @@ class UserInterface {
     }
 
     /**
+     * @returns {number} The top of this UI space (y coordinate)
+     */
+    top() {
+        return this.space.getTopLeftPoint(0, this.__tempV3)[1];
+    }
+
+    /**
+     * @returns {number} The bottom of this UI space (y coordinate)
+     */
+    bottom() {
+        return this.space.getBottomLeftPoint(0, this.__tempV3)[1];
+    }
+
+    /**
+     * @returns {number} The left side of this UI space (x coordinate)
+     */
+    left() {
+        return this.space.getTopLeftPoint(0, this.__tempV3)[0];
+    }
+
+    /**
+     * @returns {number} The right side of this UI space (x coordinate)
+     */
+    right() {
+        return this.space.getBottomLeftPoint(0, this.__tempV3)[0];
+    }
+
+    /**
      * Is the mouse hovering over the given rectangle?
-     * @param {number} x Left normalized coordinate of the rect
-     * @param {number} y Bottom normalized coordinate of the rect
-     * @param {number} width Width of the rect in normalized coordinates
-     * @param {number} height Height of the rect in normalized coordinates
-     * @returns True if the mouse is over the rectangle.
+     * @param {number} x Left coordinate of the rect
+     * @param {number} y Bottom coordinate of the rect
+     * @param {number} width Width of the rect
+     * @param {number} height Height of the rect
+     * @returns {boolean} True if the mouse is over the rectangle.
      */
     isHoveringRect(x, y, width, height) {
         const pos = this.space.getMousePosition(0, this.__tempV3);
-        return pos[0] > x && pos[0] < x + width
-            && pos[1] > y && pos[1] < y + height;
+        return this.isPointInRect(pos, x, y, width, height);
+    }
+
+    /**
+     * Is the point inside the given rectangle?
+     * @param {number} x Left coordinate of the rect
+     * @param {number} y Bottom coordinate of the rect
+     * @param {number} width Width of the rect
+     * @param {number} height Height of the rect
+     * @returns {boolean} True if the point is in the rectangle.
+     */
+    isPointInRect(point, x, y, width, height) {
+        return point[0] > x && point[0] < x + width
+            && point[1] > y && point[1] < y + height;
     }
 
     /**
@@ -1614,11 +1754,22 @@ class UserInterface {
      * @param {number} x Center x coordinate of the circle
      * @param {number} y Center y coordinate of the circle
      * @param {number} radius Radius of the circle
-     * @returns True if the mouse is over the circle.
+     * @returns {boolean} True if the mouse is over the circle.
      */
     isHoveringCircle(x, y, radius) {
         const pos = this.space.getMousePosition(0, this.__tempV3);
         return (x - pos[0]) * (x - pos[0]) + (y - pos[1]) * (y - pos[1]) < radius * radius;
+    }
+
+    /**
+     * Is the point inside the given circle?
+     * @param {number} x Center x coordinate of the circle
+     * @param {number} y Center y coordinate of the circle
+     * @param {number} radius Radius of the circle
+     * @returns {boolean} True if the point is in the circle.
+     */
+    isPointInCircle(point, x, y, radius) {
+        return (x - point[0]) * (x - point[0]) + (y - point[1]) * (y - point[1]) < radius * radius;
     }
 
     /** 
@@ -1629,7 +1780,7 @@ class UserInterface {
      * @returns {boolean} True if the button was clicked this frame
      */
     button(label, x, y) {
-        const fontSize = 10;
+        const fontSize = this.UI_TEXT_SIZE;
         const space = this.space;
 
         const labelDims = space.measureText(label, fontSize);
@@ -1657,7 +1808,7 @@ class UserInterface {
      * @returns {boolean} True if the button was clicked this frame
      */
     circleButton(label, x, y) {
-        const fontSize = 10;
+        const fontSize = this.UI_TEXT_SIZE;
         const space = this.space;
 
         const labelDims = space.measureText(label, fontSize);
@@ -1686,7 +1837,7 @@ class UserInterface {
      * @returns {boolean} True if the button was clicked this frame
      */
     highlightButton(label, isActive, x, y) {
-        const fontSize = 10;
+        const fontSize = this.UI_TEXT_SIZE;
         const space = this.space;
 
         const labelDims = space.measureText(label, fontSize);
@@ -1723,9 +1874,74 @@ class UserInterface {
      */
     label(text, x, y, style = {}) {
         style.fill = style.fill === undefined ? this.COLOR_TEXT_IDLE : style.fill;
-        const fontSize = 10;
+        const fontSize = this.UI_TEXT_SIZE;
         const space = this.space;
         space.text(text, fontSize, [x, y, 0], style);
+    }
+
+    /**
+     * Draws an interactive button that has a `lo`, `hi`, and `curr` value.
+     * Returns the slider's new value, or `curr` if it didn't change.
+     * The value will always be clamped to be between `lo` and `hi`.
+     * @param {string} name - Name of the slider
+     * @param {number} x - Left coordinate of the slider
+     * @param {number} y - Bottom coordinate of the slider
+     * @param {number} lo - Minimum value of the slider
+     * @param {number} hi - Maximum value of the slider
+     * @param {number} curr - Current value of the slider
+     * @returns {number} New value of the slider.
+     */
+    slider(name, x, y, lo, hi, curr) {
+        const fontSize = this.UI_TEXT_SIZE;
+        const space = this.space;
+        const labelDims = space.measureText(name, fontSize);
+        space.text(name, fontSize, [x, y, 0], { fill: this.COLOR_TEXT_IDLE });
+        const width = 25;
+        const height = 3;
+
+        const sliderX = x + 2 + labelDims[0];
+
+        const mouse = space.getMousePositionUnclamped(0, this.__tempV3);
+        let newValue = curr;
+        let fill = this.COLOR_ACTIVE;
+        if (this.isPointInRect(mouse, sliderX, y, width, height)) {
+            if (space.isMouseButtonHeld(0)) {
+                newValue = linMap(sliderX, sliderX + width, lo, hi, mouse[0]);
+            }
+            fill = this.COLOR_HOVERED;
+        }
+        space.rectXY([x + 2 + labelDims[0], y, 0], width, height, { fill: this.COLOR_IDLE });
+        space.rectXY([x + 2 + labelDims[0], y, 0], ilerp(lo, hi, curr) * width, height, { fill });
+        return clamp(lo, hi, newValue);
+    }
+
+    /**
+     * Draws an interactive checkbox.
+     * Clicking on the checkbox returns the opposite value of `state`.
+     * Otherwise, returns `state`.
+     * @param {string} name - Name of the Checkbox
+     * @param {number} x - Left coordinate of the Checkbox
+     * @param {number} y - Bottom coordinate of the Checkbox
+     * @param {boolean} state - Current state of the Ceckbox
+     * @returns {boolean} - The new state of the checkbox.
+     */
+    checkbox(name, x, y, state) {
+        const fontSize = this.UI_TEXT_SIZE;
+        const space = this.space;
+        const labelDims = space.measureText(name, fontSize);
+        space.text(name, fontSize, [x, y, 0], { fill: this.COLOR_TEXT_IDLE });
+        const height = 3;
+        let fill = state ? this.COLOR_ACTIVE : this.COLOR_IDLE;
+        let newState = state;
+        const checkboxX = x + 2 + labelDims[0];
+        if (this.isHoveringRect(checkboxX, y, height, height)) {
+            fill = this.COLOR_HOVERED;
+            if (space.wasMouseButtonClicked(0)) {
+                newState = !state;
+            }
+        }
+        space.rectXY([checkboxX, y, 0], height, height, { fill });
+        return newState;
     }
 
     /** 
@@ -1860,6 +2076,14 @@ class Spaces {
         this.GUI = new View(ctx, 0.5, 0, 0.5, 0.5, -1, 1);
         this.Frames = new Space(ctx, 0, 0, 1, 1, 0, 1, /* squareAspect */ false);
     }
+
+    onFrameEnd() {
+        for (const spaceKey in this) {
+            if ('onFrameEnd' in this[spaceKey]) {
+                this[spaceKey].onFrameEnd();
+            }
+        }
+    }
 }
 
 /**
@@ -1915,13 +2139,17 @@ class State {
             console.log('MSG', evt);
         };
 
+        window.addEventListener('beforeunload', () => {
+            // Browser is about to reload.
+            // Quickly save any state that should persist between reloads.
+            this.savePreReload();
+        });
+
         this.updateWs = new WebSocket(`ws://${window.location.host}/update`);
         this.updateWs.onmessage = (evt) => {
             // We got a message that a file changed.
-            // Reload the browser, but save any state that should persist between
-            // reloads.
+            // Reload the browser.
             console.log('MSG', evt);
-            this.savePreReload();
             location.reload();
         };
     }
@@ -1969,32 +2197,6 @@ class State {
 }
 State.STORAGE_KEY = 'InstallationState';
 
-/**
- * Mappings that express the relationship between data points in different coordinate systems.
- * The length of each stored array should correspond to the total number of LEDs.
- */
-class Mappings {
-    /** @param {State} state */
-    constructor(state) {
-        /** @type {iVector3[]} array of data points in physical coordinates */
-        this.physical = [];
-        /** @type {iVector3[]} corresponding array of data points in normalized coordinates */
-        this.normalized = [];
-        /** @type {iVector3[]} flat array of data points in normalized coordinates */
-        this.normalizedFlat = [];
-
-        Promise.all(
-            [fetch(`http://${window.location.host}/mappings/mappingPersp.json`).then((value) => value.json()),
-            fetch(`http://${window.location.host}/mappings/mappingFlat.json`).then((value) => value.json())]
-        ).then(([persp, flat]) => {
-            this.physical = persp;
-            this.normalized = mapPointsToNormalizedCoords(persp);
-            this.normalizedFlat = mapPointsToNormalizedCoords(flat);
-
-            state.data = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
-        });
-    }
-}
 
 function beginMainLoop(state) {
     const mappings = new Mappings(state);
@@ -2022,20 +2224,17 @@ function beginMainLoop(state) {
         Frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
 
         Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-        Perspective.setSpaceRotation(0, elapsedMs * 0.0002, -TAU/3.5);
-        
+        // Perspective.setSpaceRotation(0, elapsedMs * 0.0002, -TAU/3.5);
+
         Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
         Front.setSpaceRotation(0, 0, -TAU / 4);
-        
+
         Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
         Top.setSpaceRotation(0, 0, 0);
 
         loop(elapsedMs, spaces, mappings);
-        spaces.GUI.onFrameEnd();
-        spaces.Perspective.onFrameEnd();
-        spaces.Front.onFrameEnd();
-        spaces.Top.onFrameEnd();
 
+        spaces.onFrameEnd();
         Space.onFrameEnd();
         requestAnimationFrame(_loop);
 
@@ -2052,6 +2251,44 @@ function beginMainLoop(state) {
 // Playground Below:
 // *******************************************************************************************
 
+/**
+ * Mappings that express the relationship between data points in different coordinate systems.
+ * The length of each stored array should correspond to the total number of LEDs.
+ */
+class Mappings {
+    /** @param {State} state */
+    constructor(state) {
+        /** @type {iVector3[]} array of data points in physical coordinates */
+        this.physical = [];
+        /** @type {iVector3[]} corresponding array of data points in normalized coordinates */
+        this.normalized = [];
+        /** @type {iVector3[]} flat array of data points in normalized coordinates */
+        this.normalizedFlat = [];
+
+        Promise.all(
+            [
+                this.readMapping('mappingPersp.json'),
+                this.readMapping('mappingFlat.json')
+            ]
+        ).then(([persp, flat]) => {
+            this.physical = persp;
+            this.normalized = mapPointsToNormalizedCoords(persp);
+            this.normalizedFlat = mapPointsToNormalizedCoords(flat);
+
+            state.data = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
+        });
+    }
+
+    /**
+     * Parses the given json file from the 'server/front/mappings' directory and returns the JSON data.
+     * @param {string} jsonFileName 
+     * @returns {Promise<Object>}
+     */
+    readMapping(jsonFileName) {
+        return fetch(`http://${window.location.host}/mappings/${jsonFileName}`).then((value) => value.json());
+    }
+}
+
 const $state = new State(
     /**
      * Any values you set on the properties of this object
@@ -2063,6 +2300,15 @@ const $state = new State(
      */
     {
         animState: 0,
+        sliderState: 0,
+        rotation: {
+            x: false,
+            xVal: 0,
+            y: false,
+            yVal: 0,
+            z: false,
+            zVal: 0,
+        }
     }
 );
 beginMainLoop($state);
@@ -2148,27 +2394,42 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
 
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
-    
-    Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace()? 'green' : 'white', stroke: null });
-    Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace()? 'green' : 'white', stroke: null });
-    Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace()? 'green' : 'white', stroke: null });
-    GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace()? 'green' : 'white', stroke: null });
+
+    Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
 
     Front.drawLeds(mappings.normalized, $ledData);
     Top.drawLeds(mappings.normalizedFlat, $ledData);
     Perspective.drawLeds(mappings.normalized, $ledData);
 
-    if (GUI.ui.button('Reset State', 10, 50)) {
+
+    let uiY = GUI.ui.top();
+    GUI.ui.label(`Default Values: ${JSON.stringify($state.savedDefaults)}`, 5, uiY -= 5);
+    GUI.ui.label(`Saved Values: ${JSON.stringify($saved)}`, 5, uiY -= 5);
+    if (GUI.ui.button('Reset State', 5, uiY -= 5)) {
         $state.reset();
     }
+    if ($saved.rotation.x = GUI.ui.checkbox('Rotate X?', 5, uiY -= 5, $saved.rotation.x)) {
+        $saved.rotation.xVal = GUI.ui.slider(`Rx`, 5, uiY -= 5, -1, 1, $saved.rotation.xVal);
+        Perspective.rotateSpaceByX($saved.rotation.xVal * 0.02);
+    }
+    if ($saved.rotation.y = GUI.ui.checkbox('Rotate Y?', 5, uiY -= 5, $saved.rotation.y)) {
+        $saved.rotation.yVal = GUI.ui.slider(`Ry`, 5, uiY -= 5, -1, 1, $saved.rotation.yVal);
+        Perspective.rotateSpaceByY($saved.rotation.yVal * 0.02);
+    }
+    if ($saved.rotation.z = GUI.ui.checkbox('Rotate Z?', 5, uiY -= 5, $saved.rotation.z)) {
+        $saved.rotation.zVal = GUI.ui.slider(`Rz`, 5, uiY -= 5, -1, 1, $saved.rotation.zVal);
+        Perspective.rotateSpaceByZ($saved.rotation.zVal * 0.02);
+    }
 
-    GUI.ui.label(`My Default Values: ${JSON.stringify($state.savedDefaults)}`, 10, 90);
-    GUI.ui.label(`My Saved Values: ${JSON.stringify($saved)}`, 10, 80);
     GUI.ui.circleButton('My Circle Bttn', 50, 60);
 
-    if (GUI.ui.highlightButton('Toggle Bttn', $saved.animState === 1, 10, 30)) {
+    if (GUI.ui.highlightButton('Highlight Bttn', $saved.animState === 1, 10, 30)) {
         $saved.animState = 1;
     }
+
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
 
