@@ -1434,6 +1434,11 @@ class Space {
 
     /**
      * Returns the mouse position relative to this space.
+     * The mouse position will be unclamped so it won't be limited
+     * to the edges of the space.
+     * 
+     * If you do want the mouse to be clamped, use `getMousePosition` instead.
+     * 
      * Use the optional `depth` parameter to choose the
      * z-plane of the mouse prior to translating it into the
      * space's coordinate system.
@@ -1454,6 +1459,12 @@ class Space {
 
     /**
      * Returns the mouse position relative to this space.
+     * The result will be clamped such that the mouse position
+     * may not move outside the bounds of the space.
+     * 
+     * Use `getMousePositionUnclamped` instead if you want to get
+     * the mouse position in a space without any clamping.
+     * 
      * Use the optional `depth` parameter to choose the
      * z-plane of the mouse prior to translating it into the
      * space's coordinate system.
@@ -1476,6 +1487,20 @@ class Space {
             canvas.height - rawPos[1]);
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
+    }
+
+    /**
+     * Returns `true` if the mouse is within the current space. Otherwise,
+     * returns `false`.
+     * @returns {boolean}
+     */
+    isMouseWithinSpace() {
+        const rawPos = Space.rawMousePosition;
+        const canvas = this.ctx.canvas;
+        return rawPos[0] >= this.screenX*canvas.width 
+            && rawPos[0] <= (this.screenX+this.screenWidth)*canvas.width
+            && canvas.height - rawPos[1] >= this.screenY*canvas.height
+            && canvas.height - rawPos[1] <= (this.screenY+this.screenHeight)*canvas.height;
     }
 
     /**
@@ -2123,10 +2148,11 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
 
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
-    Perspective.sphere(Perspective.getMousePosition(), 0.1, { fill: 'green', stroke: null });
-    Top.sphere(Top.getMousePosition(), 0.1, { fill: 'blue', stroke: null });
-    Front.sphere(Front.getMousePosition(), 0.1, { fill: 'yellow', stroke: null });
-    GUI.sphere(GUI.getMousePosition(), 0.1, { fill: 'red', stroke: null });
+    
+    Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace()? 'green' : 'white', stroke: null });
+    Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace()? 'green' : 'white', stroke: null });
+    Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace()? 'green' : 'white', stroke: null });
+    GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace()? 'green' : 'white', stroke: null });
 
     Front.drawLeds(mappings.normalized, $ledData);
     Top.drawLeds(mappings.normalizedFlat, $ledData);
