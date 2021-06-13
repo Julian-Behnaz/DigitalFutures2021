@@ -1,62 +1,241 @@
+// @ts-check
+'use strict';
+
+/**
+ * The baud rate to use when connecting to the microcontroller
+ * The units are bits/second.
+ * This needs to match the baud rate in the microcontroller code
+ * so that this server can talk to the microcontroller.
+ */
+const DEVICE_BAUD_RATE = 115200;
+/**
+ * Returns `true` if the passed `portInfo` matches the device you want to
+ * autoconnect to. You'll probably need to change this depending
+ * on the microcontroller you're using, but once you've done that,
+ * your code will work even if you plug your microcontroller into
+ * a different port on your computer or run it on a different computer.
+ * @param {PortInfo} portInfo 
+ * @returns {boolean}
+ */
+function isDesiredPortInfo(portInfo) {
+    return portInfo.vendorId === '16C0' || portInfo.vendorId === '16c0';
+}
+
+/**
+ * 
+ * @param {SerialPort} device 
+ * @param {Buffer} buffer 
+ */
+function forwardBufferToDevice(device, buffer) {
+    // currDevice.write([0xFF, 0xFE, 0xFD,
+    //     0xFF, 0x00, 0x00, // R
+    //     0x00, 0xFF, 0x00, // B
+    //     0x00, 0x00, 0xFF, // G
+    //     0xFF, 0xFF, 0xFF, //
+    //     0xFF, 0xFF, 0xFF, //
+    // ]);
+    device.write([0xFF, 0xFE, 0xFD]);
+    device.write(buffer);
+    // console.log(message);
+}
+
+/**
+ * The port where this webserver runs.
+ * You'll be able to open http://localhost:BROWSER_PORT/
+ * in a browser to open the webapp.
+ */
+ const BROWSER_PORT = 8080;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
 const fs = require('fs'),
     http = require('http');
 const WebSocket = require('ws');
 const SerialPort = require('serialport');
 
-const SERVER_PORT = 8080;
+/**
+ * This is a union of all the different possible states we might be in at any given point in time.
+ * @typedef {DeviceState_Scanning|DeviceState_UnableToConnect|DeviceState_Connected} DeviceState
+ */
+/**
+ * One of the possible types of `DeviceState`.
+ * @typedef {object} DeviceState_Scanning
+ * @property {'Scanning'} status
+ * @property {PortInfo[]} found - an array of the devices found so far
+ */
+/**
+ * One of the possible types of `DeviceState`.
+ * @typedef {object} DeviceState_UnableToConnect
+ * @property {'UnableToConnect'} status
+ * @property {Error} err - the reason we were unable to connect
+ */
+ /**
+ * One of the possible types of `DeviceState`.
+ * @typedef {object} DeviceState_Connected
+ * @property {'Connected'} status
+ * @property {PortInfo} details - details for the device to which we are connected
+ */
 
-const kDEVICE_STATE = {
-    Scanning: 'Scanning',
-    NoDevicesFound: 'NoDevicesFound',
-    UnableToConnect: 'UnableToConnect',
-    Connected: 'Connected',
-};
+ /**
+  * Information about a device. Can be used to auto-connect to it even when plugged in to a different port or computer.
+  * @typedef {object} PortInfo
+  * @property {string} path - Path or identifier used to open the device. Typically something like tty/* on Mac/Linux and COM* on windows
+  * @property {string} [vendorId] - Example: `'2341'`. Identifier for the group that made the device. Somewhat consistent between platforms.
+  * @property {string} [productId] - Example: `'0043'`. Identifier for the specific product model. Somewhat consistent between platforms.
+  * @property {string} [serialNumber] - Example: `'752303138333518011C1'`. Device Serial# only present for USB devices. Somewhat consistent between platforms.
+  * @property {string} [manufacturer] - Example: `'Arduino (www.arduino.cc)'`. Who made the device. Often reported differently by different drivers.
+  * @property {string} [locationId] - Example: `'14500000'` or `undefined` or `'Port_#0003.Hub_#0001'`. Where the device is plugged in. Not guaranteed to be the same or present on all systems.
+  * @property {string} [pnpId] - Example: `'USB\\VID_2341&PID_0043\\752303138333518011C1'`. Plug and Play ID. Windows only?
+  */
 
-/** @type {?SerialPort} */
-let currDevice = null;
-let deviceState = {
-    status: kDEVICE_STATE.Scanning,
+
+/** 
+ * If we are connected to a device, this will contain a reference
+ * to the `SerialPort` we use to communicated with that device.
+ * Otherwise it will contain `null`.
+ * @type {?SerialPort}
+ */
+let connectedDevice = null;
+
+/**
+ * This tracks the current state we are in.
+ * It will change as devices get plugged in/unplugged and
+ * as we discover a device to which we want to connect.
+ * @type {DeviceState}
+ */
+let currDeviceState = {
+    status: 'Scanning',
+    found: []
 };
-let prevDeviceStatus = null;
-let websockets = {
-    /** @type {?WebSocket} */
+/**
+ * This is the state we were in before the current state.
+ * We use it to determine if our state has changed, so we
+ * can send messages only if the state has changed. 
+ * @type {?DeviceState}*/
+let prevDeviceState = null;
+
+
+/**
+ * We maintain several connections to a single webapp at a time using websockets.
+ * Each websocket has a diffrent purpose.
+ */
+const websockets = {
+    /**
+     * Allows the browser to send messages to the server that
+     * the server will pass on to the microcontroller.
+     * @type {?WebSocket} */
     data: null,
-    /** @type {?WebSocket} */
+    /**
+     * Reports the status of the server to the webapp, so that the
+     * webapp will know what the server is doing (scanning, connected to a device, etc...).
+     * @type {?WebSocket} */
     status: null,
-    /** @type {?WebSocket} */
+    /** 
+     * The server posts to this when a frontend file has been modified.
+     * That allows the webapp to live reload when frontend code changes.
+     * @type {?WebSocket}
+     */
     update: null,
 };
 
-function logDeviceState() {
-    if (prevDeviceStatus !== deviceState.status) {
+/**
+ * Returns true if the two passed device states, `a` and `b`, are sufficiently
+ * equivalent that we don't need to report that something changed.
+ * @param {DeviceState} a 
+ * @param {DeviceState} b 
+ * @returns {boolean}
+ */
+function areStatesApproxEqual(a, b) {
+    if (a && b && a.status === b.status) {
+        switch(a.status) {
+            case 'Connected':
+                /** @type {DeviceState_Connected} */
+                const bConnected = (/** @type {DeviceState_Connected} */ b);
+                return a.details === bConnected.details;
+            case 'Scanning':
+                /** @type {DeviceState_Scanning} */
+                const bScanning = (/** @type {DeviceState_Scanning} */ b);
+                const aFound = a.found;
+                const bFound = bScanning.found;
+                if (a.found.length == bScanning.found.length) {
+                    for (let i = 0; i < a.found.length; i++) {
+                        for (let x in aFound[i]) {
+                            if (bFound[i][x] !== aFound[i][x]) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                }
+                break;
+            case 'UnableToConnect':
+                return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * If the device state has changed since the lass call to this function,
+ * logs information about the change to the console where the server is running
+ * and also sends the current device state to the "status" websocket.
+ * @returns {void}
+ */
+function reportDeviceStateIfChanged() {
+    if (!areStatesApproxEqual(prevDeviceState, currDeviceState)) {
         console.log('deviceState:');
-        console.log(deviceState);
-        prevDeviceStatus = deviceState.status;
+        console.log(currDeviceState);
+        prevDeviceState = currDeviceState;
 
         if (websockets.status) {
-            websockets.status.send(JSON.stringify(deviceState));
+            websockets.status.send(JSON.stringify(currDeviceState));
         }
     }
 }
 
-function setDeviceStateScanning() {
-    deviceState = {
-        status: kDEVICE_STATE.Scanning,
+/**
+ * Sets `deviceState` to the Scanning state.
+ * Stores info about what devices we've found thus far.
+ * @param {PortInfo[]} foundSoFar
+ */
+function setDeviceStateScanning(foundSoFar) {
+    currDeviceState = {
+        status: 'Scanning',
+        found: foundSoFar
     };
-    logDeviceState();
+    reportDeviceStateIfChanged();
 }
 
+/**
+ * Sets `deviceState` to the UnableToConnect state.
+ * Stores the error that prevented connection.
+ * @param {Error} err
+ */
 function setDeviceStateUnableToConnect(err) {
-    deviceState = {
-        status: kDEVICE_STATE.UnableToConnect,
+    currDeviceState = {
+        status: 'UnableToConnect',
         err
     };
-    logDeviceState();
+    reportDeviceStateIfChanged();
 }
 
+/**
+ * Sets `deviceState` to the Connected state.
+ * Stores simple serializable info a
+ * @param {string} path 
+ * @param {?string} vendorId 
+ * @param {?string} productId 
+ * @param {?string} serialNumber 
+ */
 function setDeviceStateConnected(path, vendorId, productId, serialNumber) {
-    deviceState = {
-        status: kDEVICE_STATE.Connected,
+    currDeviceState = {
+        status: 'Connected',
         details: {
             path,
             vendorId,
@@ -64,70 +243,68 @@ function setDeviceStateConnected(path, vendorId, productId, serialNumber) {
             serialNumber
         }
     };
-    logDeviceState();
+    reportDeviceStateIfChanged();
 }
 
 
+/**
+ * Sleep for the specified number of milliseconds.
+ * @param {number} ms 
+ * @returns {Promise<NodeJS.Timeout>}
+ */
 async function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function scanForDevices() {
-    setDeviceStateScanning();
+const NO_DEVICES = [];
+/**
+ * Continuously scan for devices while we are not connected to a device.
+ * Sets `connectedDevice` and `currDeviceState` based on the scan result.
+ * @param {number} intervalMs - scan interval in milliseconds
+ */
+async function scanForDevices(intervalMs) {
+    setDeviceStateScanning(NO_DEVICES);
     while (true) {
-        if (deviceState.status === kDEVICE_STATE.Scanning) {
-            const data = await SerialPort.list();
+        if (currDeviceState.status === 'Scanning') {
+            const deviceList = await SerialPort.list();
+            /** @type {?PortInfo} */
             let info = null;
-            for (let i = 0; i < data.length; i++) {
-                if (data[i].vendorId === '16C0') {
-                    // Found a device with an Arduino vendor ID
-                    info = data[i];
-                    break;
+            for (let i = 0; i < deviceList.length; i++) {
+                if (isDesiredPortInfo(deviceList[i])) {
+                    info = deviceList[i];
+                    break;                    
                 }
             }
             if (info) {
-                currDevice = new SerialPort(info.path, { baudRate: 115200 }, (err) => {
+                connectedDevice = new SerialPort(info.path, { baudRate: DEVICE_BAUD_RATE }, (err) => {
                     if (err) {
                         // Something went wrong when opening the port!
                         setDeviceStateUnableToConnect(err);
-                        setDeviceStateScanning();
+                        setDeviceStateScanning(deviceList);
                     } else {
                         // Device opened sucessfully
                         setDeviceStateConnected(info.path, info.vendorId, info.productId, info.serialNumber);
                     }
                 });
-                currDevice.on('close', () => {
+                connectedDevice.on('close', () => {
                     console.log('DEVICE CLOSED');
-                    setDeviceStateScanning();
+                    setDeviceStateScanning(NO_DEVICES);
                 });
-                currDevice.on('error', (err) => {
+                connectedDevice.on('error', (err) => {
                     console.log('DEVICE ERROR', err);
-                    setDeviceStateScanning();
+                    setDeviceStateScanning(NO_DEVICES);
                 });
             } else {
-                setDeviceStateScanning();
+                setDeviceStateScanning(deviceList);
             }
         }
-        await sleep(1000);
+        await sleep(intervalMs);
     }
 }
 
-let fsWait = false;
-fs.watch('./front', {recursive: true}, (event, filename) => {
-  if (filename) {
-    if (fsWait) return;
-    fsWait = setTimeout(() => {
-      fsWait = false;
-    }, 100);
-    console.log(`${filename} file Changed`);
-    if (websockets.update) {
-        websockets.update.send(JSON.stringify({changed: filename}));
-    }
-  }
-});
-
+/** Set up a file server to serve HTML pages, javascript, and JSON files. */
 const server = http.createServer(function (req, res) {
-    const uri = new URL(req.url, `http://localhost:${SERVER_PORT}/`);
+    const uri = new URL(req.url, `http://localhost:${BROWSER_PORT}/`);
     const pathname = uri.pathname === '/' ? '/index.html' : uri.pathname;
     console.log('GOT REQUEST TO', pathname);
     fs.readFile(`${__dirname}/front${pathname}`, function (err, data) {
@@ -136,10 +313,11 @@ const server = http.createServer(function (req, res) {
             res.end(JSON.stringify(err));
             return;
         }
+        /** @type {http.OutgoingHttpHeaders}  */
         const headers = {};
         if (pathname.endsWith('.js')) {
             headers['Content-Type'] = 'text/javascript';
-        } else if (pathname.endsWith('.js')) {
+        } else if (pathname.endsWith('.json')) {
             headers['Content-Type'] = 'application/json';
         }
         res.writeHead(200, headers);
@@ -147,74 +325,70 @@ const server = http.createServer(function (req, res) {
     });
 });
 
+/** Websocket for forwarding data to connected microcontroller. */
 const dataServer = new WebSocket.Server({ noServer: true });
 dataServer.on('connection', function connection(ws) {
     ws.on('message', function incoming(message) {
-        if (deviceState.status === kDEVICE_STATE.Connected) {
-            // currDevice.write([0xFF, 0xFE, 0xFD,
-            //     0xFF, 0x00, 0x00, // R
-            //     0x00, 0xFF, 0x00, // B
-            //     0x00, 0x00, 0xFF, // G
-            //     0xFF, 0xFF, 0xFF, //
-            //     0xFF, 0xFF, 0xFF, //
-            // ]);
-            currDevice.write([0xFF, 0xFE, 0xFD]);
-            currDevice.write(message);
-            // console.log(message);
+        if (currDeviceState.status === 'Connected') {
+            if (message instanceof Buffer) {
+                forwardBufferToDevice(connectedDevice, message);
+            } else {
+                console.error('Message from dataServer is not a Buffer!')
+            }
         }
-    });
-
-    ws.on('close', (ws) => {
-
     });
 
     if (websockets.data) {
         websockets.data.close();
     }
     websockets.data = ws;
-
-    ws.send(JSON.stringify(deviceState));
 });
 
+/** Websocket for telling the frontend what the connection status is. */
 const statusServer = new WebSocket.Server({ noServer: true });
 statusServer.on('connection', function connection(ws) {
-    ws.on('message', function incoming(message) {
-        console.log('received: %s', message);
-    });
-
-    ws.on('close', (ws) => {
-
-    });
-
     if (websockets.status) {
         websockets.status.close();
     }
     websockets.status = ws;
 
-    ws.send(JSON.stringify(deviceState));
+    ws.send(JSON.stringify(currDeviceState));
 });
 
+/** Websocket for telling the frontend to reload when files change. */
 const updateServer = new WebSocket.Server({ noServer: true });
 updateServer.on('connection', function connection(ws) {
-    ws.on('message', function incoming(message) {
-        console.log('received: %s', message);
-    });
-
-    ws.on('close', (ws) => {
-
-    });
-
     if (websockets.update) {
         websockets.update.close();
     }
     websockets.update = ws;
 });
 
+/** 
+ * If we get a watch event, we set a brief timeout during which we
+ * don't send update messages. Otherwise, we might trigger
+ * many back-to-back reloads due to noisy watch events.
+ * @type {NodeJS.Timeout|null}
+ */
+ let fsWait = null;
+ fs.watch('./front', {recursive: true}, (event, filename) => {
+   if (filename) {
+     if (fsWait !== null) { return; }
+     fsWait = setTimeout(() => {
+       fsWait = null;
+     }, 100);
+     console.log(`${filename} file Changed`);
+     if (websockets.update) {
+         websockets.update.send(JSON.stringify({changed: filename}));
+     }
+   }
+ });
 
 server.on('upgrade', function upgrade(request, socket, head) {
-    const uri = new URL(request.url, `http://localhost:${SERVER_PORT}/`);
+    const uri = new URL(request.url, `http://localhost:${BROWSER_PORT}/`);
     const pathname = uri.pathname;
 
+    /** Set up websockets on different routes for different purposes */
     if (pathname === '/data') {
         dataServer.handleUpgrade(request, socket, head, function done(ws) {
             dataServer.emit('connection', ws, request);
@@ -232,6 +406,8 @@ server.on('upgrade', function upgrade(request, socket, head) {
     }
 });
 
-scanForDevices();
-server.listen(SERVER_PORT);
-console.log(`Listening at http://localhost:${SERVER_PORT}/ ...`)
+server.listen(BROWSER_PORT);
+console.log(`
+Open a browser to http://localhost:${BROWSER_PORT}/ to connect to the server ...
+`);
+scanForDevices(1000);

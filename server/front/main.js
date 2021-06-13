@@ -126,6 +126,10 @@ function clamp01(value) {
     return Math.min(Math.max(value, 0), 1);
 }
 
+function copySign(a, b) {
+    return b < 0 ? -abs(a) : abs(a);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -382,6 +386,32 @@ class Vector3 extends Array {
     }
 
     /**
+     * Returns the cross product of `a` and `b`.
+     * @param {iVector3} a
+     * @param {iVector3} b
+     * @param {Vector3} [out]
+     * @returns {Vector3}
+     */
+    static crossProduct(a, b, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = a[1] * b[2] - a[2] * b[1];
+        out[1] = a[2] * b[0] - a[0] * b[2];
+        out[2] = a[0] * b[1] - a[1] * b[0];
+        return out;
+    }
+
+    /**
+     * Returns the cross product of `this` and `vector`.
+     * @param {iVector3} vector
+     * @returns {Vector3}
+     */
+    cross(vector) {
+        return Vector3.crossProduct(this, vector);
+    }
+
+    /**
      * Returns the dot product of `this` and `vector`.
      * @param {iVector3} vector
      * @returns {number}
@@ -417,6 +447,23 @@ class Vector3 extends Array {
      */
     static ilerp(a, b, vector) {
         return (vector[0] - a[0]) * (b[0] - a[0]) + (vector[1] - a[1]) * (b[1] - a[1]) + (vector[2] - a[2]) * (b[2] - a[2]);
+    }
+
+    /**
+     * Returns a vector that is perpendicular to `vector`.
+     * @param {iVector3} vector
+     * @param {Vector3} [out]
+     * @returns {Vector3}
+     */
+    static somePerpendicular(vector, out) {
+        // See https://math.stackexchange.com/questions/137362/how-to-find-perpendicular-vector-to-another-vector
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = copySign(vector[2], vector[0]);
+        out[1] = copySign(vector[2], vector[1]);
+        out[2] = -copySign(vector[0], vector[2]) - copySign(vector[1], vector[2]);
+        return out;
     }
 }
 
@@ -1089,9 +1136,10 @@ class Space {
         const spaceDif = this.initialSpaceMax - this.initialSpaceMin;
         const spaceOffset = ilerp(this.initialSpaceMin, this.initialSpaceMax, 0);
 
+        // Right handed coordinate system
         this.scale[0] = (xDim / spaceDif);
         this.scale[1] = -(yDim / spaceDif);
-        this.scale[2] = zDim / spaceDif;
+        this.scale[2] = -(zDim / spaceDif);
         this.translation[0] = canvas.width * this.screenWidth * spaceOffset + left;
         this.translation[1] = canvas.height - (canvas.height * this.screenHeight * spaceOffset + top);
         this.translation[2] = 0;
@@ -1143,8 +1191,8 @@ class Space {
      * @example <caption>Changing the color and thickness:</caption>
      * space.line([1,1,1], [0,0,0], { color: 0xFF0000FF, thickness: 2 });
      * 
-     * @param {[x: number, y: number, z: number]} pt1 - coordinates of the first point
-     * @param {[x: number, y: number, z: number]} pt2 - coordinates of the first point
+     * @param {iVector3} pt1 - coordinates of the first point
+     * @param {iVector3} pt2 - coordinates of the first point
      *
      * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
      * @param {string|number} [style.color] - Color of the line
@@ -1235,6 +1283,56 @@ class Space {
             cornerPt,
             [cornerPt[0], cornerPt[1] + height, cornerPt[2]],
             [cornerPt[0] + width, cornerPt[1] + height, cornerPt[2]],
+            [cornerPt[0] + width, cornerPt[1], cornerPt[2]],
+        ], style);
+    }
+
+    /**
+     * Draw a rectangle in the yz plane.
+     * 
+     * @param {iVector3} cornerPt - Center of the crosshairs.
+     * @param {number} width - Width of the rectangle
+     * @param {number} height - Height of the rectangle.
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill.
+     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the rectangle stroke
+     * @returns {void}
+     */
+    rectYZ(cornerPt, width, height, style = {}) {
+        style.fill = style.fill === undefined ? null : style.fill;
+        style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        style.thickness = style.thickness === undefined ? 1 : style.thickness;
+
+        this.polygon([
+            cornerPt,
+            [cornerPt[0], cornerPt[1], cornerPt[2] + height],
+            [cornerPt[0], cornerPt[1] + width, cornerPt[2] + height],
+            [cornerPt[0], cornerPt[1] + width, cornerPt[2]],
+        ], style);
+    }
+
+    /**
+     * Draw a rectangle in the xz plane.
+     * 
+     * @param {iVector3} cornerPt - Center of the crosshairs.
+     * @param {number} width - Width of the rectangle
+     * @param {number} height - Height of the rectangle.
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill.
+     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the rectangle stroke
+     * @returns {void}
+     */
+    rectXZ(cornerPt, width, height, style = {}) {
+        style.fill = style.fill === undefined ? null : style.fill;
+        style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        style.thickness = style.thickness === undefined ? 1 : style.thickness;
+
+        this.polygon([
+            cornerPt,
+            [cornerPt[0], cornerPt[1], cornerPt[2] + height],
+            [cornerPt[0] + width, cornerPt[1], cornerPt[2] + height],
             [cornerPt[0] + width, cornerPt[1], cornerPt[2]],
         ], style);
     }
@@ -1791,7 +1889,7 @@ class UserInterface {
         const isHovered = this.isHoveringRect(x, y, width, height);
         const wentDown = isHovered && space.wasMouseButtonClicked(0);
 
-        space.rectXY([x, y, 0], width, height,
+        this.rect(x, y, width, height,
             { fill: isHovered ? this.COLOR_HOVERED : this.COLOR_IDLE });
         space.text(label, fontSize, [x + padding, y + padding, 0], {
             fill: isHovered ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE
@@ -1856,11 +1954,17 @@ class UserInterface {
         } else {
             fill = this.COLOR_IDLE;
         }
-        space.rectXY([x, y, 0], width, height, { fill });
+        this.rect(x, y, width, height, { fill });
         space.text(label, fontSize, [x + padding, y + padding, 0],
             { fill: isHovered || isActive ? this.COLOR_TEXT_HOVERED : this.COLOR_TEXT_IDLE });
 
         return wentDown;
+    }
+
+    rect(x, y, width, height, style) {
+        const space = this.space;
+        this.__tempV3.setValues(x, y, 0)
+        space.rectXY(this.__tempV3, width, height, style);
     }
 
     /** 
@@ -1910,8 +2014,8 @@ class UserInterface {
             }
             fill = this.COLOR_HOVERED;
         }
-        space.rectXY([x + 2 + labelDims[0], y, 0], width, height, { fill: this.COLOR_IDLE });
-        space.rectXY([x + 2 + labelDims[0], y, 0], ilerp(lo, hi, curr) * width, height, { fill });
+        this.rect(x + 2 + labelDims[0], y, width, height, { fill: this.COLOR_IDLE });
+        this.rect(x + 2 + labelDims[0], y, ilerp(lo, hi, curr) * width, height, { fill });
         return clamp(lo, hi, newValue);
     }
 
@@ -1940,7 +2044,7 @@ class UserInterface {
                 newState = !state;
             }
         }
-        space.rectXY([checkboxX, y, 0], height, height, { fill });
+        this.rect(checkboxX, y, height, height, { fill });
         return newState;
     }
 
@@ -2079,8 +2183,9 @@ class Spaces {
 
     onFrameEnd() {
         for (const spaceKey in this) {
-            if ('onFrameEnd' in this[spaceKey]) {
-                this[spaceKey].onFrameEnd();
+            const prop = this[spaceKey];
+            if (prop instanceof View) {
+                prop.onFrameEnd();
             }
         }
     }
@@ -2108,6 +2213,44 @@ class State {
     savedDefaults = {};
 
     /**
+     * This is a union of all the different possible states we might be in at any given point in time.
+     * @typedef {DeviceState_Scanning|DeviceState_UnableToConnect|DeviceState_Connected} DeviceState
+     */
+    /**
+     * One of the possible types of `DeviceState`.
+     * @typedef {object} DeviceState_Scanning
+     * @property {'Scanning'} status
+     * @property {PortInfo[]} found - an array of the devices found so far
+     */
+    /**
+     * One of the possible types of `DeviceState`.
+     * @typedef {object} DeviceState_UnableToConnect
+     * @property {'UnableToConnect'} status
+     * @property {Error} err - the reason we were unable to connect
+     */
+    /**
+    * One of the possible types of `DeviceState`.
+    * @typedef {object} DeviceState_Connected
+    * @property {'Connected'} status
+    * @property {PortInfo} details - details for the device to which we are connected
+    */
+
+    /**
+     * Information about a device. Can be used to auto-connect to it even when plugged in to a different port or computer.
+     * @typedef {object} PortInfo
+     * @property {string} path - Path or identifier used to open the device. Typically something like tty/* on Mac/Linux and COM* on windows
+     * @property {string} [vendorId] - Example: `'2341'`. Identifier for the group that made the device. Somewhat consistent between platforms.
+     * @property {string} [productId] - Example: `'0043'`. Identifier for the specific product model. Somewhat consistent between platforms.
+     * @property {string} [serialNumber] - Example: `'752303138333518011C1'`. Device Serial# only present for USB devices. Somewhat consistent between platforms.
+     * @property {string} [manufacturer] - Example: `'Arduino (www.arduino.cc)'`. Who made the device. Often reported differently by different drivers.
+     * @property {string} [locationId] - Example: `'14500000'` or `undefined` or `'Port_#0003.Hub_#0001'`. Where the device is plugged in. Not guaranteed to be the same or present on all systems.
+     * @property {string} [pnpId] - Example: `'USB\\VID_2341&PID_0043\\752303138333518011C1'`. Plug and Play ID. Windows only?
+     */
+
+    /** @type {DeviceState} */
+    deviceState = { status: 'Scanning', found: [] };
+
+    /**
      * Creates a new `State` object. 
      * Pass in an object literal for `savedDefaults` to
      * make those values be the default values for properties that will
@@ -2122,21 +2265,23 @@ class State {
 
         this.statusWs = new WebSocket(`ws://${window.location.host}/status`);
         this.statusWs.onopen = (evt) => {
-            console.log('OPEN');
+            console.log('[Status] Opened websocket for getting device status messages.');
         };
         this.statusWs.onmessage = (evt) => {
-            console.log('MSG', evt);
+            try {
+                this.deviceState = JSON.parse(evt.data);
+                console.log('[Status]', this.deviceState);
+            } catch (e) {
+                console.error('Unable to parse status message', e);
+            }
         };
 
         this.dataWs = new WebSocket(`ws://${window.location.host}/data`);
         this.dataWs.onopen = (evt) => {
-            console.log('OPEN');
+            console.log('[Data] Opened websocket for forwarding messages to microcontroller.');
         };
         this.dataWs.onclose = (evt) => {
-            console.log('CLOSED');
-        };
-        this.dataWs.onmessage = (evt) => {
-            console.log('MSG', evt);
+            console.warn('[Data] Closed websocket. Will no longer send actuator data to server.');
         };
 
         window.addEventListener('beforeunload', () => {
@@ -2146,10 +2291,16 @@ class State {
         });
 
         this.updateWs = new WebSocket(`ws://${window.location.host}/update`);
+        this.updateWs.onopen = (evt) => {
+            console.log('[Status] Opened websocket for reloading when stuff changes.');
+        };
         this.updateWs.onmessage = (evt) => {
             // We got a message that a file changed.
             // Reload the browser.
-            console.log('MSG', evt);
+            console.log('[Update]', evt.data);
+            try {
+                console.log('[Update]', JSON.parse(evt.data));
+            } catch { /* Intentionally ignored. Just reload anyway. */ }
             location.reload();
         };
     }
@@ -2308,7 +2459,8 @@ const $state = new State(
             yVal: 0,
             z: false,
             zVal: 0,
-        }
+        },
+        test: Vector3.create(0, 0, 0),
     }
 );
 beginMainLoop($state);
@@ -2387,12 +2539,29 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
         }
     }
 
-    Front.line([x, 0, 1], [x, 0, -1], { color: 'red', thickness: 6 });
-    Perspective.line([x, 0, 1], [x, 0, -1], { color: 'red', thickness: 6 });
-    Top.line([x, 0, 1], [x, 0, -1], { color: 'red', thickness: 6 });
+    Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+    Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+    Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+
+    Perspective.sphere([cos(elapsedMs * 0.01) * 0.9, sin(elapsedMs * 0.01) * 0.9, 0], 0.2, { stroke: 'white' });
+
+    // let xxx = [0.1, 0, .5];
+    // let yyy = Vector3.somePerpendicular(xxx);
+    // let zzz = Vector3.crossProduct(xxx,yyy);
+    // Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 6 });
+    // Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 6 });
+    // Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 6 });
+    let xxx = [1, 0, 0];
+    let yyy = [0, 1, 0];
+    let zzz = [0, 0, 1];
+    Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 6 });
+    Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 6 });
+    Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 6 });
 
 
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
+    Perspective.rectYZ([0, -0.5, -0.5], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
+    Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
 
 
     Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
