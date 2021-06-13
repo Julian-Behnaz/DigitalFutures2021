@@ -1,6 +1,11 @@
 // @ts-check
 'use strict';
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// CONFIG
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
+
 /**
  * The baud rate to use when connecting to the microcontroller
  * The units are bits/second.
@@ -22,20 +27,25 @@ function isDesiredPortInfo(portInfo) {
 }
 
 /**
- * 
+ * Given a specific `device` and `buffer`, sends the buffer to the device,
+ * along with any other bytes the device might need for things like synchronization.
  * @param {SerialPort} device 
  * @param {Buffer} buffer 
  */
 function forwardBufferToDevice(device, buffer) {
-    // currDevice.write([0xFF, 0xFE, 0xFD,
+    // Byte sequence the microcontroller expects to begin every message.
+    // Used to reduce chance of desynchronization.
+    device.write([0xFF, 0xFE, 0xFD]);
+    device.write(buffer);
+
+    // Example message. Might be useful for debugging color channel ordering.
+    // currDevice.write([
     //     0xFF, 0x00, 0x00, // R
     //     0x00, 0xFF, 0x00, // B
     //     0x00, 0x00, 0xFF, // G
-    //     0xFF, 0xFF, 0xFF, //
-    //     0xFF, 0xFF, 0xFF, //
+    //     0xFF, 0xFF, 0xFF, // White
+    //     0xFF, 0xFF, 0xFF, // White
     // ]);
-    device.write([0xFF, 0xFE, 0xFD]);
-    device.write(buffer);
     // console.log(message);
 }
 
@@ -46,7 +56,7 @@ function forwardBufferToDevice(device, buffer) {
  */
  const BROWSER_PORT = 8080;
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////////////

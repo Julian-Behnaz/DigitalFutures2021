@@ -1,6 +1,37 @@
 // @ts-check
 'use strict';
 
+/********************************************************************************************************************************
+*********************************************************************************************************************************
+* 👋👋🏻👋🏼👋🏽👋🏾👋🏿
+* Hi! Welcome to the Installation Visualizer!
+* 👋👋🏻👋🏼👋🏽👋🏾👋🏿
+*
+* This file is where you'll spend most of your time writing animations.
+* It provides a bunch of useful functionality for:
+* - streaming data to a microcontroller via a webserver
+* - drawing animated things in different 3D views
+* - making a simple UI for tweaking values
+* - automatically updating your browser window when a file changes
+* - saving values between updates/reloads so you don't lose your tweaks
+* 
+*
+* If you haven't yet, make sure to
+* ```
+* npm run start
+* ```
+* inside the `/server` folder in this repository to start the visualizer running.
+*
+* Once you're ready,
+* @see {Playground} to start coding!
+* Psst... 👆 That's a link to the bottom of the file. Command+click the word "Playground" (or control+click on Windows/Linux)
+* to jump to it.
+*
+* We hope you have fun!
+* - Julian and Behnaz
+*********************************************************************************************************************************
+*********************************************************************************************************************************/
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Common Mathematical Functions and Constants
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2281,7 +2312,12 @@ class State {
             console.log('[Data] Opened websocket for forwarding messages to microcontroller.');
         };
         this.dataWs.onclose = (evt) => {
-            console.warn('[Data] Closed websocket. Will no longer send actuator data to server.');
+            console.warn(`
+            [Data] Closed websocket. Will no longer send actuator data to server.
+            
+            You likely stopped the server or opened a new browser tab (only one can send data at a time).
+            If you didn't expect this, make sure the server is running and refresh the page.
+            `);
         };
 
         window.addEventListener('beforeunload', () => {
@@ -2398,9 +2434,8 @@ function beginMainLoop(state) {
 //////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
-// *******************************************************************************************
-// Playground Below:
-// *******************************************************************************************
+/** @typedef {'Get started below!'} Playground */
+// 👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
 
 /**
  * Mappings that express the relationship between data points in different coordinate systems.
