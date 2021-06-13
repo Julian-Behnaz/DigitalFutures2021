@@ -157,8 +157,17 @@ function clamp01(value) {
     return Math.min(Math.max(value, 0), 1);
 }
 
-function copySign(a, b) {
-    return b < 0 ? -abs(a) : abs(a);
+/**
+ * Copies the sign (- or +) from `signSource` and
+ * returns `value` with the sign of `signSource`.
+ * - If `signSource` is negative, returns `-abs(value)`
+ * - If `signSource` is positive, returns `abs(value)`
+ * @param {number} value
+ * @param {number} signSource
+ * @returns {number}
+ */
+function copySign(value, signSource) {
+    return signSource < 0 ? -abs(value) : abs(value);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -209,21 +218,33 @@ class Vector3 extends Array {
     }
 
     /**
-     * Returns a new vector with the same values as `this`.
+     * Copies the `vector` and returns the copy.
+     * If `out` is provided, modifies it rather than creating a new vector.
+     * @param {iVector3} vector
+     * @param {Vector3} [out]
      * @returns {Vector3}
      */
-    duplicate() {
-        return new Vector3(this[0], this[1], this[1]);
+    static copy(vector, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        out[0] = vector[0];
+        out[1] = vector[1];
+        out[2] = vector[2];
+        return out;
     }
 
     /**
-     * Copies values from `this` to `out`.
-     * @param {iVector3} out
+     * Returns a new vector with the same values as `this`.
+     * If `out` is provided, modifies it rather than creating a new vector.
+     * @param {Vector3} out - [OPTIONAL] Modified if provided
+     * @returns {Vector3}
      */
-    copyTo(out) {
-        out[0] = this[0];
-        out[1] = this[1];
-        out[2] = this[2];
+    duplicated(out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        return Vector3.copy(this, out);
     }
 
     /**
@@ -335,11 +356,13 @@ class Vector3 extends Array {
     }
 
     /**
-     * Modifies `out` to be the normalized form of `vector`.
-     * `out` will have a magnitude of 1
-     * and point in the same direction as `this`.
+     * Normalizes `vector` without modifying it.
+     * Returns a vector with the resulting normalized vector, which will 
+     * have a magnitude of `1` and point in the same direction as `vector`.
+     * If `out` is provided, modifies it rather than creating a new
+     * vector.
      * 
-     * If `vector` is the zero vector, sets `out` to the zero vector
+     * If `vector` is the zero vector, returns the zero vector
      * instead of normalizing.
      * @param {iVector3} vector
      * @param {Vector3} [out] - [OPTIONAL] modified if provided
@@ -351,12 +374,13 @@ class Vector3 extends Array {
         }
         const divisor = 1 / Vector3.magnitude(vector);
         if (Number.isFinite(divisor)) {
-            return Vector3.scaled(vector, 1 / Vector3.magnitude(vector), out);
+            Vector3.scaled(vector, divisor, out);
         } else {
             out[0] = 0;
             out[1] = 0;
             out[2] = 0;
         }
+        return out;
     }
 
     /**
@@ -366,10 +390,19 @@ class Vector3 extends Array {
      * 
      * If `this` is the zero vector, returns a zero vector
      * instead of normalizing.
-     * @returns {Vector3}
+     * @returns {Vector3}  
      */
     normalized() {
         return Vector3.normalize(this);
+    }
+
+    /**
+       * Returns the length of `vector`.
+       * @param {iVector3} vector
+       * @returns {number}
+       */
+    static magnitude(vector) {
+        return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
     }
 
     /**
@@ -378,23 +411,6 @@ class Vector3 extends Array {
      */
     getMagnitude() {
         return Vector3.magnitude(this);
-    }
-
-    /**
-     * Returns the squared length of `this`.
-     * @returns {number}
-     */
-    getSqrMagnitude() {
-        return Vector3.sqrMagnitude(this);
-    }
-
-    /**
-     * Returns the length of `vector`.
-     * @param {iVector3} vector
-     * @returns {number}
-     */
-    static magnitude(vector) {
-        return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2]);
     }
 
     /**
@@ -407,6 +423,14 @@ class Vector3 extends Array {
     }
 
     /**
+     * Returns the squared length of `this`.
+     * @returns {number}
+     */
+    getSqrMagnitude() {
+        return Vector3.sqrMagnitude(this);
+    }
+
+    /**
      * Returns the dot product of `a` and `b`.
      * @param {iVector3} a
      * @param {iVector3} b
@@ -414,6 +438,15 @@ class Vector3 extends Array {
      */
     static dotProduct(a, b) {
         return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    }
+
+    /**
+     * Returns the dot product of `this` and `vector`.
+     * @param {iVector3} vector
+     * @returns {number}
+     */
+    dot(vector) {
+        return Vector3.dotProduct(this, vector);
     }
 
     /**
@@ -440,15 +473,6 @@ class Vector3 extends Array {
      */
     cross(vector) {
         return Vector3.crossProduct(this, vector);
-    }
-
-    /**
-     * Returns the dot product of `this` and `vector`.
-     * @param {iVector3} vector
-     * @returns {number}
-     */
-    dot(vector) {
-        return Vector3.dotProduct(this, vector);
     }
 
     /**
@@ -482,6 +506,8 @@ class Vector3 extends Array {
 
     /**
      * Returns a vector that is perpendicular to `vector`.
+     * There are an infinite number of possible perpendicular vectors.
+     * This chooses one and returns it.
      * @param {iVector3} vector
      * @param {Vector3} [out]
      * @returns {Vector3}
@@ -653,8 +679,8 @@ class Matrix4x4 extends Array {
 
     /**
      * Create a new identity matrix. When multiplying
-     * the identity matrix with a vector, the vector is unchanged.
-     * When multiplying identity matrix with another matrix, the matrix is unchanged.
+     * the identity matrix with a vector, the result is the vector you started with.
+     * When multiplying identity matrix with another matrix, the result is the matrix you started with. 
      * 
      * The identity matrix looks like this:
      * ```
@@ -710,6 +736,9 @@ class Matrix4x4 extends Array {
      * @returns {Matrix4x4}
      */
     duplicated(out) {
+        if (out === undefined) {
+            out = Matrix4x4.identity();
+        }
         return Matrix4x4.copy(this, out);
     }
 
@@ -741,13 +770,13 @@ class Matrix4x4 extends Array {
     }
 
     /**
-     * Returns the result of multiplying `this` with `b`, returning a new matrix.
+     * Returns the result of multiplying `this` with `matrix`, returning a new matrix.
      * Note that the order in which you multiply matrices together changes the outcome.
-     * @param {Matrix4x4} b 
+     * @param {Matrix4x4} matrix 
      * @returns {Matrix4x4}
      */
-    times(b) {
-        return Matrix4x4.multiply(this, b);
+    times(matrix) {
+        return Matrix4x4.multiply(this, matrix);
     }
 
     /**
@@ -769,12 +798,12 @@ class Matrix4x4 extends Array {
 
     /**
      * Returns a new matrix where each element is the sum of the corrseponding
-     * elements of `this` and `b`.
-     * @param {Matrix4x4} b 
+     * elements of `this` and `matrix`.
+     * @param {Matrix4x4} matrix 
      * @returns {Matrix4x4}
      */
-    plus(b) {
-        return Matrix4x4.add(this, b);
+    plus(matrix) {
+        return Matrix4x4.add(this, matrix);
     }
 
     /**
@@ -796,23 +825,12 @@ class Matrix4x4 extends Array {
 
     /**
      * Returns a new matrix where each element is the difference of the corrseponding
-     * elements of `this` and `b`.
-     * @param {Matrix4x4} b 
+     * elements of `this` and `matrix`.
+     * @param {Matrix4x4} matrix 
      * @returns {Matrix4x4}
      */
-    minus(b) {
-        return Matrix4x4.subtract(this, b);
-    }
-
-    /**
-     * Multiplies the matrix with a vector `vec`, transforming the vector by the matrix.
-     * @param {iVector3} vector
-     * @returns {Vector3}
-     */
-    timesVector3(vector) {
-        const res = Vector3.zero();
-        Matrix4x4.multiplyVector3(this, vector, /* out */res);
-        return res;
+    minus(matrix) {
+        return Matrix4x4.subtract(this, matrix);
     }
 
     /**
@@ -834,6 +852,17 @@ class Matrix4x4 extends Array {
         for (let i = 0; i < 3; i++) {
             out[i] = matrix[i + 0 * 4] * x + matrix[i + 1 * 4] * y + matrix[i + 2 * 4] * z + matrix[i + 3 * 4] * w;
         }
+        return out;
+    }
+
+    /**
+     * Multiplies the matrix with a vector `vec`, transforming the vector by the matrix.
+     * @param {iVector3} vector
+     * @returns {Vector3}
+     */
+    timesVector3(vector) {
+        const out = Vector3.zero();
+        Matrix4x4.multiplyVector3(this, vector, out);
         return out;
     }
 
@@ -898,39 +927,6 @@ class Matrix4x4 extends Array {
     }
 
     /**
-     * Returns a new matrix formed by rotating `this` around the x axis by `radians`.
-     * @param {number} radians - Angle to rotate by
-     * @returns {Matrix4x4}
-     */
-    rotX(radians) {
-        const mat = Matrix4x4.__temp;
-        Matrix4x4.fromXRotation(radians, mat);
-        return Matrix4x4.multiply(this, mat);
-    }
-
-    /**
-     * Returns a new matrix formed by rotating `this` around the y axis by `radians`.
-     * @param {number} radians
-     * @returns {Matrix4x4}
-     */
-    rotY(radians) {
-        const mat = Matrix4x4.__temp;
-        Matrix4x4.fromYRotation(radians, mat);
-        return Matrix4x4.multiply(this, mat);
-    }
-
-    /**
-     * Returns a new matrix formed by rotating `this` around the z axis by `radians`.
-     * @param {number} radians - Angle to rotate by
-     * @returns {Matrix4x4}
-     */
-    rotZ(radians) {
-        const mat = Matrix4x4.__temp;
-        Matrix4x4.fromZRotation(radians, mat);
-        return Matrix4x4.multiply(this, mat);
-    }
-
-    /**
      * Returns the matrix resulting from rotating 
      * `mat` by `radians` around the x axis.
      * If `out` is provided, overwrites it
@@ -983,6 +979,33 @@ class Matrix4x4 extends Array {
         const rotMat = Matrix4x4.fromZRotation(radians, Matrix4x4.__temp);
         return Matrix4x4.multiply(mat, rotMat, out);
     }
+
+    /**
+     * Returns a new matrix formed by rotating `this` around the x axis by `radians`.
+     * @param {number} radians - Angle to rotate by
+     * @returns {Matrix4x4}
+     */
+    rotX(radians) {
+        return Matrix4x4.rotatedByX(this, radians);
+    }
+
+    /**
+     * Returns a new matrix formed by rotating `this` around the y axis by `radians`.
+     * @param {number} radians - Angle to rotate by
+     * @returns {Matrix4x4}
+     */
+    rotY(radians) {
+        return Matrix4x4.rotatedByY(this, radians);
+    }
+
+    /**
+     * Returns a new matrix formed by rotating `this` around the z axis by `radians`.
+     * @param {number} radians - Angle to rotate by
+     * @returns {Matrix4x4}
+     */
+    rotZ(radians) {
+        return Matrix4x4.rotatedByZ(this, radians);
+    }
 }
 /**
  * @private
@@ -1000,6 +1023,9 @@ Matrix4x4.__temp = Matrix4x4.identity();
  */
 // @ts-ignore
 Matrix4x4.__temp2 = Matrix4x4.identity();
+
+
+
 
 class Space {
     /**
@@ -1025,7 +1051,7 @@ class Space {
         screenWidth,
         screenHeight,
         initialSpaceMin = -1,
-        initialSpaceMax = -1,
+        initialSpaceMax = 1,
         squareAspect = true) {
         this.ctx = ctx;
         this.screenX = screenX;
@@ -1036,15 +1062,20 @@ class Space {
         this.initialSpaceMax = initialSpaceMax;
         this.squareAspect = squareAspect;
 
+        // Initial values. Will be overwritten later.
         this.scale = Vector3.create(1, 1, 1);
-        this.translation = Vector3.create(0, 0, 0);
+        this.translation = Vector3.zero();
         this.rotationMatrix = Matrix4x4.identity();
         this.matrix = Matrix4x4.identity();
         this.inverseMatrix = Matrix4x4.identity();
 
+        /** @private */
         this.__tempP1 = Vector3.zero();
+        /** @private */
         this.__tempP2 = Vector3.zero();
+        /** @private */
         this.__tempP3 = Vector3.zero();
+        /** @private */
         this.__tempP4 = Vector3.zero();
 
         this.updateViewMatrix();
@@ -1127,7 +1158,7 @@ class Space {
         const ctx = this.ctx;
         const canvas = ctx.canvas;
         ctx.clearRect(
-            screenX * canvas.width, screenY * canvas.height,
+            screenX * canvas.width, 1 - screenY * canvas.height,
             (screenX + screenWidth) * canvas.width, (screenY + screenHeight) * canvas.height);
     }
 
@@ -1145,12 +1176,13 @@ class Space {
         const canvas = ctx.canvas;
         ctx.fillStyle = this._canvasColor(color);
         ctx.fillRect(
-            screenX * canvas.width, screenY * canvas.height,
+            screenX * canvas.width, 1 - screenY * canvas.height,
             (screenX + screenWidth) * canvas.width, (screenY + screenHeight) * canvas.height);
     }
 
     /**
-     * Updates the view matrix based on the current canvas dimensions and the current rotation.
+     * Updates the view matrix and inverse matrix based on the current canvas dimensions and the current rotation.
+     * *You probably won't need to use this directly.*
      * @returns {void}
      */
     updateViewMatrix() {
@@ -1180,7 +1212,6 @@ class Space {
             0, 0, this.scale[2], this.translation[2],
             0, 0, 0, 1);
 
-        // this.matrix = (this.matrix).times(this.rotationMatrix);
         Matrix4x4.multiply(this.matrix, this.rotationMatrix, this.matrix);
 
         // Also store the inverse of the view matrix, which we can calculate directly.
@@ -1193,7 +1224,7 @@ class Space {
         // 2 6 10 14
         // 3 7 11 15
         const rot = this.rotationMatrix;
-        this.translation.copyTo(this.__tempP1);
+        this.translation.duplicated(this.__tempP1);
         const iT = Vector3.scaled(this.__tempP1, -1, this.__tempP1);
         const X = this.__tempP2;
         const Y = this.__tempP3;
@@ -1226,14 +1257,18 @@ class Space {
      * @param {iVector3} pt2 - coordinates of the first point
      *
      * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
-     * @param {string|number} [style.color] - Color of the line
-     * @param {number} [style.thickness] - Thickness of the line
+     * @param {string|number} [style.color] - Color of the line ('white' by default)
+     * @param {number} [style.thickness] - Thickness of the line (1 by default)
      * 
      * @returns {void}
      */
     line(pt1, pt2, style = {}) {
-        const color = style.color === undefined ? null : style.color;
+        const color = style.color === undefined ? 'white' : style.color;
         const thickness = style.thickness === undefined ? 1 : style.thickness;
+
+        if (color === null || !thickness) {
+            return;
+        }
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -1254,12 +1289,12 @@ class Space {
      * @param {iVector3} centerPt - Center of the crosshairs.
      * @param {number} radius - Radius of the crosshairs.
      * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
-     * @param {string|number} [style.color] - Color of the crosshair lines
-     * @param {number} [style.thickness] - Thickness of the crosshair lines
+     * @param {string|number} [style.color] - Color of the crosshair lines ('white' by default)
+     * @param {number} [style.thickness] - Thickness of the crosshair lines (1 by default)
      * @returns {void}
      */
     crosshairs(centerPt, radius, style = {}) {
-        const color = style.color === undefined ? null : style.color;
+        const color = style.color === undefined ? 'white' : style.color;
         const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         this.line([centerPt[0] - radius, centerPt[1], centerPt[2]],
@@ -1275,13 +1310,13 @@ class Space {
      * 
      * @param {number} radius - Radius of the crosshairs.
      * @param {Object} [style] - [Optional] style properties e.g. `{ fill: 'red', stroke: 'green', thickness: 2 }`
-     * @param {string|number} [style.fill] - Color of the axis labels
-     * @param {string|number} [style.stroke] - Color of the axis lines
-     * @param {number} [style.thickness] - Thickness of the axis lines
+     * @param {string|number} [style.fill] - Color of the axis labels ('white' by default)
+     * @param {string|number} [style.stroke] - Color of the axis lines ('white' by default)
+     * @param {number} [style.thickness] - Thickness of the axis lines (1 by default)
      * @returns {void}
      */
     axes(radius, textSize, style = {}) {
-        const stroke = style.stroke === undefined ? null : style.stroke;
+        const stroke = style.stroke === undefined ? 'white' : style.stroke;
         const fill = style.fill === undefined ? 'white' : style.fill;
         const thickness = style.thickness === undefined ? 1 : style.thickness;
         this.crosshairs([0, 0, 0], radius, { color: stroke, thickness });
@@ -1296,18 +1331,18 @@ class Space {
     /**
      * Draw a rectangle in the xy plane.
      * 
-     * @param {iVector3} cornerPt - Center of the crosshairs.
+     * @param {iVector3} cornerPt - Corner of the rectangle.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
-     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill.
-     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. `null` for no stroke.
-     * @param {number} [style.thickness] - Thickness of the rectangle stroke
+     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill, which is the default.
+     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. ('white' by default). `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the rectangle stroke (1 by default)
      * @returns {void}
      */
     rectXY(cornerPt, width, height, style = {}) {
         style.fill = style.fill === undefined ? null : style.fill;
-        style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        style.stroke = style.stroke === undefined ? 'white' : style.stroke;
         style.thickness = style.thickness === undefined ? 1 : style.thickness;
 
         this.polygon([
@@ -1321,18 +1356,18 @@ class Space {
     /**
      * Draw a rectangle in the yz plane.
      * 
-     * @param {iVector3} cornerPt - Center of the crosshairs.
+     * @param {iVector3} cornerPt - Corner of the rectangle.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
-     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill.
-     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. `null` for no stroke.
-     * @param {number} [style.thickness] - Thickness of the rectangle stroke
+     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill, which is the default.
+     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. ('white' by default). `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the rectangle stroke (1 by default)
      * @returns {void}
      */
     rectYZ(cornerPt, width, height, style = {}) {
         style.fill = style.fill === undefined ? null : style.fill;
-        style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        style.stroke = style.stroke === undefined ? 'white' : style.stroke;
         style.thickness = style.thickness === undefined ? 1 : style.thickness;
 
         this.polygon([
@@ -1346,18 +1381,18 @@ class Space {
     /**
      * Draw a rectangle in the xz plane.
      * 
-     * @param {iVector3} cornerPt - Center of the crosshairs.
+     * @param {iVector3} cornerPt - Corner of the rectangle.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
-     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill.
-     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. `null` for no stroke.
-     * @param {number} [style.thickness] - Thickness of the rectangle stroke
+     * @param {string|number|null} [style.fill] - Fill color of the rectangle. `null` for no fill, which is the default.
+     * @param {string|number|null} [style.stroke] - Stroke color of the rectangle. ('white' by default). `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the rectangle stroke (1 by default)
      * @returns {void}
      */
     rectXZ(cornerPt, width, height, style = {}) {
         style.fill = style.fill === undefined ? null : style.fill;
-        style.stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        style.stroke = style.stroke === undefined ? 'white' : style.stroke;
         style.thickness = style.thickness === undefined ? 1 : style.thickness;
 
         this.polygon([
@@ -1373,14 +1408,14 @@ class Space {
      * 
      * @param {iVector3[]} points - Points of the polygon
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
-     * @param {string|number|null} [style.fill] - Fill color of the polygon. `null` for no fill.
-     * @param {string|number|null} [style.stroke] - Stroke color of the polygon. `null` for no stroke.
-     * @param {number} [style.thickness] - Thickness of the polygon stroke
+     * @param {string|number|null} [style.fill] - Fill color of the polygon. `null` for no fill, which is the default.
+     * @param {string|number|null} [style.stroke] - Stroke color of the polygon. ('white' by default). `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the polygon stroke (1 by default)
      * @returns {void}
      */
     polygon(points, style = {}) {
         const fill = style.fill === undefined ? null : style.fill;
-        const stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        const stroke = style.stroke === undefined ? 'white' : style.stroke;
         const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         if (points.length > 0) {
@@ -1412,14 +1447,14 @@ class Space {
      * @param {iVector3} centerPt - Center of the sphere
      * @param {number} radius - Radius of the sphere
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
-     * @param {string|number|null} [style.fill] - Fill color of the sphere. `null` for no fill.
-     * @param {string|number|null} [style.stroke] - Stroke color of the sphere. `null` for no stroke.
+     * @param {string|number|null} [style.fill] - Fill color of the sphere. `null` for no fill, which is the default.
+     * @param {string|number|null} [style.stroke] - Stroke color of the sphere. 'white' by default. `null` for no stroke.
      * @param {number} [style.thickness] - Thickness of the sphere's stroke
      * @returns {void}
      */
     sphere(centerPt, radius, style = {}) {
         const fill = style.fill === undefined ? null : style.fill;
-        const stroke = style.stroke === undefined ? 0xFF : style.stroke;
+        const stroke = style.stroke === undefined ? 'white' : style.stroke;
         const thickness = style.thickness === undefined ? 1 : style.thickness;
 
         const mat = this.matrix;
@@ -1447,11 +1482,15 @@ class Space {
      * @param {number} size - Font size
      * @param {iVector3} position - Position of the text
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red'}`
-     * @param {string|number} [style.fill] - Fill color of the text.
+     * @param {string|number} [style.fill] - Fill color of the text. 'white' by default.
      * @returns {void}
      */
     text(text, size, position, style = {}) {
-        const fill = style.fill === undefined ? 0xFF : style.fill;
+        const fill = style.fill === undefined ? 'white' : style.fill;
+
+        if (fill === null) {
+            return;
+        }
 
         const mat = this.matrix;
         const ctx = this.ctx;
@@ -1592,7 +1631,7 @@ class Space {
         if (out === undefined) {
             out = Vector3.zero();
         }
-        Space.rawMousePosition.copyTo(out);
+        Space.rawMousePosition.duplicated(out);
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
     }
@@ -2015,7 +2054,7 @@ class UserInterface {
     }
 
     /**
-     * Draws an interactive button that has a `lo`, `hi`, and `curr` value.
+     * Draws an interactive slider that has a `lo`, `hi`, and `curr` value.
      * Returns the slider's new value, or `curr` if it didn't change.
      * The value will always be clamped to be between `lo` and `hi`.
      * @param {string} name - Name of the slider
@@ -2088,6 +2127,15 @@ class UserInterface {
     }
 }
 
+/**
+ * A class that represents a view on the screen with a specific location
+ * and a user interface.
+ * 
+ * The space has coordinates you specify in the constructor.
+ * 
+ * You can access the user interface with `.ui`.
+ * Its dimensions range from 0-100. 0,0 is at the bottom.
+ */
 class View extends Space {
     /**
      * Create a new view for drawing on the screen.
@@ -2475,6 +2523,7 @@ class Mappings {
     }
 }
 
+/** @typedef {'Section for changing default values:'} StateDefinition */
 const $state = new State(
     /**
      * Any values you set on the properties of this object
@@ -2495,14 +2544,17 @@ const $state = new State(
             z: false,
             zVal: 0,
         },
-        test: Vector3.create(0, 0, 0),
+        cir: {
+            show: false,
+            radius: 0,
+        }
     }
 );
 beginMainLoop($state);
 
 /**
- * Animation tick function. Called at the screen refresh rate (typically 60x per second).
- * @param {number} elapsedMs Number of milliseconds elapsed since last tick
+ * Animation loop function. Called at the screen refresh rate (typically 60x per second).
+ * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
  * @param {Spaces} spaces 
  * @param {Mappings} mappings 
  */
@@ -2540,15 +2592,7 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     /**
      * Any modifications you make to the properties of `$saved` will stick around
      * unless you click the reset button or call `$state.reset();`.
-     * You can freely add or remove properties to $saved by changing the object passed in
-     * above, where we do:
-     * ```
-     * const $state = new State(
-     *     {
-     *         ...
-     *     }
-     * );
-     * ```
+     * @see {StateDefinition} to add or remove properties from `$saved`.
      */
     const $saved = $state.saved;
 
@@ -2557,16 +2601,11 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     Top.ui.label(`Top [normalizedFlat:${mappings.normalizedFlat.length}]`, 5, 5, { fill: 'white' });
 
 
-    // Front.sphere([0, 0, 0], 0.1, { fill: 'red', stroke: 'green', thickness: 2 });
-    // Front.sphere([0, 0, 0.2], 0.05, { fill: 'red', stroke: 'green', thickness: 2 });
-
     const points = mappings.normalized;
     let x = sin(elapsedMs * 0.0007);
     for (let i = 0; i < points.length; i++) {
         let pt = points[i];
-        // let di = dist(x, 0, pt[0], pt[1]);
         let di = abs(x - pt[0]);
-
         if (di < 0.5) {
             $ledData[i * 3 + 0] = 255;
         } else {
@@ -2578,31 +2617,24 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
     Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
 
-    Perspective.sphere([cos(elapsedMs * 0.01) * 0.9, sin(elapsedMs * 0.01) * 0.9, 0], 0.2, { stroke: 'white' });
 
-    // let xxx = [0.1, 0, .5];
-    // let yyy = Vector3.somePerpendicular(xxx);
-    // let zzz = Vector3.crossProduct(xxx,yyy);
-    // Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 6 });
-    // Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 6 });
-    // Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 6 });
     let xxx = [1, 0, 0];
     let yyy = [0, 1, 0];
     let zzz = [0, 0, 1];
-    Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 6 });
-    Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 6 });
-    Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 6 });
+    Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 2 });
+    Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 2 });
+    Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 2 });
 
 
-    Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
-    Perspective.rectYZ([0, -0.5, -0.5], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
-    Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFF0000FF, thickness: 2 });
+    Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
+    Perspective.rectYZ([0, -0.5, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
+    Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
 
 
-    Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-    Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-    Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-    GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    // Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    // Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    // Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
+    // GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
 
     Front.drawLeds(mappings.normalized, $ledData);
     Top.drawLeds(mappings.normalizedFlat, $ledData);
@@ -2610,11 +2642,16 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
 
 
     let uiY = GUI.ui.top();
-    GUI.ui.label(`Default Values: ${JSON.stringify($state.savedDefaults)}`, 5, uiY -= 5);
-    GUI.ui.label(`Saved Values: ${JSON.stringify($saved)}`, 5, uiY -= 5);
+    // GUI.ui.label(`Default Values: ${JSON.stringify($state.savedDefaults)}`, 5, uiY -= 5);
+    // GUI.ui.label(`Saved Values: ${JSON.stringify($saved)}`, 5, uiY -= 5);
     if (GUI.ui.button('Reset State', 5, uiY -= 5)) {
         $state.reset();
     }
+    // $state.reset();
+    //NOTE: If there is an error where you write somethinf to state that you then read, which causes an error, recovering
+    // is annoying. We have to either auto-reset or tell students to manually do $state.reset();
+
+
     if ($saved.rotation.x = GUI.ui.checkbox('Rotate X?', 5, uiY -= 5, $saved.rotation.x)) {
         $saved.rotation.xVal = GUI.ui.slider(`Rx`, 5, uiY -= 5, -1, 1, $saved.rotation.xVal);
         Perspective.rotateSpaceByX($saved.rotation.xVal * 0.02);
@@ -2627,12 +2664,27 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
         $saved.rotation.zVal = GUI.ui.slider(`Rz`, 5, uiY -= 5, -1, 1, $saved.rotation.zVal);
         Perspective.rotateSpaceByZ($saved.rotation.zVal * 0.02);
     }
+    // Some other buttons for drawing objects
+    // if ($saved.cir.show = GUI.ui.checkbox('Circle', 5, uiY -= 5, $saved.cir.show)) {
+    //     $saved.cir.radius = GUI.ui.slider(`Rad`, 5, uiY -= 5, 0, 1, $saved.cir.radius);
+    //     Perspective.sphere([0, 0, 0], $saved.cir.radius);
+    // }
 
     GUI.ui.circleButton('My Circle Bttn', 50, 60);
 
-    if (GUI.ui.highlightButton('Highlight Bttn', $saved.animState === 1, 10, 30)) {
-        $saved.animState = 1;
+    if ($saved.cir.show = GUI.ui.checkbox('Anim', 5, uiY -= 30, $saved.cir.show)) {
+
+
+        if (GUI.ui.highlightButton('Anim1', $saved.animState === 1, 5, uiY -= 5)) {
+            $saved.animState = 1;
+        }
+
+        if (GUI.ui.highlightButton('Anim2', $saved.animState === 2, 5, uiY -= 5)) {
+            $saved.animState = 2;
+        }
     }
+
+
 
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
