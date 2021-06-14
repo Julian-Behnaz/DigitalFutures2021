@@ -2838,7 +2838,7 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     // For checking if error handling works:
     // let ff = 6;
     // ff.hi = 8;
-    .
+    // .
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
 
