@@ -2454,25 +2454,13 @@ class State {
             `);
         };
 
+        window['INSTALLATION_STATE'] = this;
+
         window.addEventListener('beforeunload', () => {
             // Browser is about to reload.
             // Quickly save any state that should persist between reloads.
             this.savePreReload();
         });
-
-        this.updateWs = new WebSocket(`ws://${window.location.host}/update`);
-        this.updateWs.onopen = (evt) => {
-            console.log('[Status] Opened websocket for reloading when stuff changes.');
-        };
-        this.updateWs.onmessage = (evt) => {
-            // We got a message that a file changed.
-            // Reload the browser.
-            console.log('[Update]', evt.data);
-            try {
-                console.log('[Update]', JSON.parse(evt.data));
-            } catch { /* Intentionally ignored. Just reload anyway. */ }
-            location.reload();
-        };
     }
 
     /**
@@ -2531,15 +2519,6 @@ function beginMainLoop(state) {
     const ctx = canvas.getContext('2d');
     Space.autoResize(ctx);
     const spaces = new Spaces(ctx);
-    const errorElem = document.getElementById('error');
-    errorElem.classList.add('hidden');
-    const errorMsg = document.getElementById('error-msg');
-    const errorStack = document.getElementById('error-stack');
-    const savedCurr = document.getElementById('saved-curr');
-    const savedDefault = document.getElementById('saved-default');
-    const resetBttn = document.getElementById('reset-bttn');
-    resetBttn.onclick = () => { state.reset(); }
-    let hadErrorLastFrame = false;
 
     /**
      * Main animation loop
@@ -2559,48 +2538,13 @@ function beginMainLoop(state) {
         Frames.rectXY([0, 0.5, 0], 0.5, 0.5, { stroke: 0xFF, thickness: 2 });
 
         Perspective.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-        // Perspective.setSpaceRotation(0, elapsedMs * 0.0002, -TAU/3.5);
 
-        Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
         Front.setSpaceRotation(0, 0, -TAU / 4);
+        Front.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
 
-        Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
         Top.setSpaceRotation(0, 0, 0);
-
-        try {
-            loop(elapsedMs, spaces, mappings);
-            if (hadErrorLastFrame) {
-                errorElem.classList.add('hidden');
-                hadErrorLastFrame = false;
-            }
-        } catch (err) {
-            if (!hadErrorLastFrame) {
-                errorElem.classList.remove('hidden');
-                hadErrorLastFrame = true;
-            }
-            if (typeof err === 'object') {
-                if (err.message) {
-                    errorMsg.textContent = err.message;
-                }
-                if (err.stack) {
-                    errorStack.textContent = err.stack;
-                }
-            } else {
-                errorMsg.textContent = err;
-                errorStack.textContent = '';
-            }
-            try {
-                savedCurr.textContent = JSON.stringify(state.saved, null, 2);
-            } catch {
-                savedCurr.textContent = 'Current state is invalid!';
-            }
-            try {
-                savedDefault.textContent = JSON.stringify(state.savedDefaults, null, 2);
-            } catch {
-                savedDefault.textContent = 'Default state is invalid!';
-            }
-        }
-
+        Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
+        loop(elapsedMs, spaces, mappings);
         spaces.onFrameEnd();
         Space.onFrameEnd();
         requestAnimationFrame(_loop);
@@ -2872,7 +2816,6 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     //     $saved.cir.radius = GUI.ui.slider(`Rad`, 5, uiY -= 5, 0, 1, $saved.cir.radius);
     //     Perspective.sphere([0, 0, 0], $saved.cir.radius);
     // }
-
     GUI.ui.circleButton('My Circle Bttn', 50, 60);
 
     if ($saved.cir.show = GUI.ui.checkbox('Anim', 5, uiY -= 30, $saved.cir.show)) {
@@ -2892,6 +2835,10 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
 
 
 
+    // For checking if error handling works:
+    // let ff = 6;
+    // ff.hi = 8;
+    .
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
 

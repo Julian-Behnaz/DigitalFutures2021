@@ -13,6 +13,7 @@
             margin: 0;
             width: 100vw;
             height: 100vh;
+            background-color: black;
         }
 
         #visualization {
@@ -64,13 +65,14 @@
 
 <body>
     <canvas id="visualization"></canvas>
-    <div id="error">
+    <div id="error" class="hidden">
         <div class="contents">
+            <div id="error-pos"></div>
             <h1>Error</h1>
-            <div id="error-msg"></div>
+            <div id="error-msg">Unable to load. Check the developer console and refresh.</div>
             <h2>Stack</h2>
             <div id="error-stack"></div>
-            <div class="state">
+            <div id="state-display" class="state">
                 <div class="state-container">
                     <h2>Default State</h2>
                     <div id="saved-default" class="state-scroll"></div>
@@ -82,6 +84,77 @@
             </div>
         </div>
     </div>
+    <script>
+        // @ts-check
+        'use strict';
+        const errorElem = document.getElementById('error');
+        const errorMsg = document.getElementById('error-msg');
+        const errorPos = document.getElementById('error-pos');
+        const errorStack = document.getElementById('error-stack');
+        const resetBttn = document.getElementById('reset-bttn');
+        const savedCurr = document.getElementById('saved-curr');
+        const savedDefault = document.getElementById('saved-default');
+        const stateDisplay = document.getElementById('state-display');
+
+        resetBttn.onclick = () => { 
+            if ('INSTALLATION_STATE' in window) {
+                window['INSTALLATION_STATE'].reset();
+                updateStateDisplay();
+            }
+        }
+
+        function updateStateDisplay() {
+            if ('INSTALLATION_STATE' in window) {
+                const state = window['INSTALLATION_STATE'];
+                try {
+                    savedCurr.textContent = JSON.stringify(state.saved, null, 2);
+                } catch {
+                    savedCurr.textContent = 'Current state is invalid!';
+                }
+                try {
+                    savedDefault.textContent = JSON.stringify(state.savedDefaults, null, 2);
+                } catch {
+                    savedDefault.textContent = 'Default state is invalid!';
+                }
+                stateDisplay.classList.remove('hidden');
+            } else {
+                savedCurr.textContent = "???";
+                savedDefault.textContent = "???";
+                stateDisplay.classList.add('hidden');
+            }
+        }
+
+        const updateWs = new WebSocket(`ws://${window.location.host}/update`);
+        updateWs.onopen = (evt) => {
+            console.log('[Update] Opened websocket for reloading when stuff changes.');
+        };
+        updateWs.onmessage = (evt) => {
+            // We got a message that a file changed.
+            // Reload the browser.
+            console.log('[Update]', evt.data);
+            try {
+                console.log('[Update]', JSON.parse(evt.data));
+            } catch { /* Intentionally ignored. Just reload anyway. */ }
+            location.reload();
+        };
+
+        window.onerror = function (msg, url, lineNo, columnNo, err) {
+            errorPos.textContent = `Oops :( I found an error in ${url} on Line ${lineNo}, Column ${columnNo}`;
+            if (typeof err === 'object') {
+                if (err.message) {
+                    errorMsg.textContent = err.message;
+                }
+                if (err.stack) {
+                    errorStack.textContent = err.stack;
+                }
+            } else {
+                errorMsg.textContent = msg.toString();
+                errorStack.textContent = '';
+            }
+            errorElem.classList.remove('hidden');
+            updateStateDisplay();
+        };
+    </script>
     <script src="main.js"></script>
 </body>
 
