@@ -1643,8 +1643,8 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} depth 
-     * @param {Vector3} out 
+     * @param {number} [depth] 
+     * @param {Vector3} [out] 
      * @returns 
      */
     getTopLeftPoint(depth = 0, out) {
@@ -1665,8 +1665,8 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} depth 
-     * @param {Vector3} out 
+     * @param {number} [depth] 
+     * @param {Vector3} [out] 
      * @returns 
      */
     getTopRightPoint(depth = 0, out) {
@@ -1687,8 +1687,8 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} depth 
-     * @param {Vector3} out 
+     * @param {number} [depth] 
+     * @param {Vector3} [out] 
      * @returns 
      */
     getBottomRightPoint(depth = 0, out) {
@@ -1709,8 +1709,8 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} depth 
-     * @param {Vector3} out 
+     * @param {number} [depth] 
+     * @param {Vector3} [out] 
      * @returns 
      */
     getBottomLeftPoint(depth = 0, out) {
@@ -2433,6 +2433,10 @@ class State {
 State.STORAGE_KEY = 'InstallationState';
 
 
+/**
+ * Start the main animation loop
+ * @param {State} state 
+ */
 function beginMainLoop(state) {
     const mappings = new Mappings(state);
     /** @type {HTMLCanvasElement} */
@@ -2441,6 +2445,15 @@ function beginMainLoop(state) {
     const ctx = canvas.getContext('2d');
     Space.autoResize(ctx);
     const spaces = new Spaces(ctx);
+    const errorElem = document.getElementById('error');
+    const errorMsg = document.getElementById('error-msg');
+    const errorStack = document.getElementById('error-stack');
+    const savedCurr = document.getElementById('saved-curr');
+    const savedDefault = document.getElementById('saved-default');
+    const resetBttn = document.getElementById('reset-bttn');
+    resetBttn.onclick = () => { state.reset(); }
+    let hadErrorLastFrame = false;
+
     /**
      * Main animation loop
      * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
@@ -2467,7 +2480,39 @@ function beginMainLoop(state) {
         Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
         Top.setSpaceRotation(0, 0, 0);
 
-        loop(elapsedMs, spaces, mappings);
+        try {
+            loop(elapsedMs, spaces, mappings);
+            if (hadErrorLastFrame) {
+                errorElem.classList.add('hidden');
+                hadErrorLastFrame = false;
+            }
+        } catch (err) {
+            if (!hadErrorLastFrame) {
+                errorElem.classList.remove('hidden');
+                hadErrorLastFrame = true;
+            }
+            if (typeof err === 'object') {
+                if (err.message) {
+                    errorMsg.textContent = err.message;
+                }
+                if (err.stack) {
+                    errorStack.textContent = err.stack;
+                }
+            } else {
+                errorMsg.textContent = err;
+                errorStack.textContent = '';
+            }
+            try {
+                savedCurr.textContent = JSON.stringify(state.saved, null, 2);
+            } catch {
+                savedCurr.textContent = 'Current state is invalid!';
+            }
+            try {
+                savedDefault.textContent = JSON.stringify(state.savedDefaults, null, 2);
+            } catch {
+                savedDefault.textContent = 'Default state is invalid!';
+            }
+        }
 
         spaces.onFrameEnd();
         Space.onFrameEnd();

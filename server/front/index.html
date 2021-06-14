@@ -20,11 +20,68 @@
             width: 100%;
             height: 100%;
         }
+
+        #error {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            min-height: 100%;
+            color: white;
+            font-family: sans-serif;
+            display: block;
+            white-space: pre;
+            background-color: rgba(255,0,0,0.5);
+        }
+
+        #error .contents {
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #error .state {
+            background-color: black;
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .state-container {
+            max-height: 100%;
+            width: 50%;
+            overflow: scroll;
+            padding: 0.5rem;
+        }
+        
+        .hidden {
+            display: none;
+        }
+
     </style>
 </head>
 
 <body>
     <canvas id="visualization"></canvas>
+    <div id="error">
+        <div class="contents">
+            <h1>Error</h1>
+            <div id="error-msg"></div>
+            <h2>Stack</h2>
+            <div id="error-stack"></div>
+            <div class="state">
+                <div class="state-container">
+                    <h2>Default State</h2>
+                    <div id="saved-default" class="state-scroll"></div>
+                </div>
+                <div class="state-container">
+                    <h2>Current State <button id="reset-bttn">Reset</button></h2>
+                    <div id="saved-curr" class="state-scroll"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="main.js"></script>
 </body>
 
