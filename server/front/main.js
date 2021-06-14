@@ -1711,7 +1711,7 @@ class Space {
         }
         const canvas = this.ctx.canvas;
         out[0] = this.screenX * canvas.width;
-        out[1] = (this.screenY + this.screenHeight) * canvas.height;
+        out[1] = (1 - (this.screenY + this.screenHeight)) * canvas.height;
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
     }
@@ -1733,7 +1733,7 @@ class Space {
         }
         const canvas = this.ctx.canvas;
         out[0] = (this.screenX + this.screenWidth) * canvas.width;
-        out[1] = (this.screenY + this.screenHeight) * canvas.height;
+        out[1] = (1 - (this.screenY + this.screenHeight)) * canvas.height;
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
     }
@@ -1755,7 +1755,7 @@ class Space {
         }
         const canvas = this.ctx.canvas;
         out[0] = (this.screenX + this.screenWidth) * canvas.width;
-        out[1] = this.screenY * canvas.height;
+        out[1] = (1 - this.screenY) * canvas.height;
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
     }
@@ -1777,7 +1777,7 @@ class Space {
         }
         const canvas = this.ctx.canvas;
         out[0] = this.screenX * canvas.width;
-        out[1] = this.screenY * canvas.height;
+        out[1] = (1 - this.screenY) * canvas.height;
         out[2] = depth;
         return Matrix4x4.multiplyVector3(this.inverseMatrix, out, out);
     }
