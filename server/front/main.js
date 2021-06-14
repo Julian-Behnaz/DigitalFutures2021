@@ -200,6 +200,25 @@ class Vector3 extends Array {
     }
 
     /**
+     * Returns the distance between two vectors
+     * @param {iVector3} a 
+     * @param {iVector3} b 
+     * @returns {number}
+     */
+    static distance(a, b) {
+        return Vector3.subtract(a, b, Vector3.__temp).getMagnitude();
+    }
+
+    /**
+     * Returns the distance to the given `vector`
+     * @param {iVector3} vector
+     * @returns {number}
+     */
+    distTo(vector) {
+        return Vector3.distance(this, vector);
+    }
+
+    /**
      * Creates and returns a 3d vector filled with the passed parameters.
      * 
      * ```
@@ -523,6 +542,14 @@ class Vector3 extends Array {
         return out;
     }
 }
+/**
+ * @private
+ * DO NOT USE.
+ * Internal temporary vector used to reduce
+ * allocations when doing vector math.
+ */
+// @ts-ignore
+Vector3.__temp = Vector3.zero();
 
 /**
  * A Matrix class with helper methods for multiplying, adding, subtracting, rotating,
@@ -1442,6 +1469,37 @@ class Space {
     }
 
     /**
+     * Draw a polyline between the given points.
+     * 
+     * @param {iVector3[]} points - Points of the polyline
+     * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
+     * @param {string|number|null} [style.stroke] - Stroke color of the polyline. ('white' by default). `null` for no stroke.
+     * @param {number} [style.thickness] - Thickness of the polyline stroke (1 by default)
+     * @returns {void}
+     */
+    polyline(points, style = {}) {
+        const stroke = style.stroke === undefined ? 'white' : style.stroke;
+        const thickness = style.thickness === undefined ? 1 : style.thickness;
+
+        if (points.length > 0) {
+            const mat = this.matrix;
+            const ctx = this.ctx;
+            const start = Matrix4x4.multiplyVector3(mat, points[0], /* out */this.__tempP1);
+            ctx.beginPath();
+            ctx.moveTo(start[0], start[1]);
+            for (let i = 1; i < points.length; i++) {
+                const pt = Matrix4x4.multiplyVector3(mat, points[i], /* out */this.__tempP1);
+                ctx.lineTo(pt[0], pt[1]);
+            }
+            if (stroke && thickness) {
+                ctx.lineWidth = thickness;
+                ctx.strokeStyle = this._canvasColor(stroke);
+                ctx.stroke();
+            }
+        }
+    }
+
+    /**
      * Draw a sphere.
      * 
      * @param {iVector3} centerPt - Center of the sphere
@@ -2225,7 +2283,7 @@ function computeBoundingBox(dataPoints) {
  * Given some data points, converts them to points in a normalized coordinate space.
  * such that the max values are at 1 or -1.
  * @param {iVector3[]} dataPoints
- * @returns {[x: number, y: number, z: number][]}
+ * @returns {Vector3[]}
  */
 function mapPointsToNormalizedCoords(dataPoints) {
     const bounds = computeBoundingBox(dataPoints);
@@ -2241,11 +2299,39 @@ function mapPointsToNormalizedCoords(dataPoints) {
     const normalizedPoints = [];
     for (let i = 0; i < dataPoints.length; i++) {
         const pt = dataPoints[i];
-        /** @type {[x: number, y: number, z: number]} */
-        const scaledPt = [pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor];
+        const scaledPt = Vector3.create(pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor);
         normalizedPoints.push(scaledPt);
     }
     return normalizedPoints;
+}
+
+/**
+ * Given some data points that are of the form [x,y,z], 
+ * returns a new array of Vector3s with corresponding values.
+ * @param {iVector3[]} dataPoints
+ * @returns {Vector3[]}
+ */
+function mapPointsToVector3s(dataPoints) {
+    return dataPoints.map((v) => Vector3.create(v[0], v[1], v[2]));
+}
+
+/**
+ * Interpolates between the given list of points.
+ * If t is 1, returns the last point
+ * If t is 0, returns the first point
+ * Otherwise, returns a blended value in between.
+ * If the t value indicates a location between two points,
+ * linearly interpolate between them.
+ * @param {iVector3[]} points - points to interpolate between
+ * @param {number} t - a number between 0 and 1
+ * @param {Vector3} [out] - [OPTIONAL] modified with the result if provided
+ * @returns {Vector3}
+ */
+function interpBetweenPoints(points, t, out) {
+    const rawIdx = lerp(0, points.length - 1, clamp01(t));
+    const startIdx = Math.floor(rawIdx);
+    const endIdx = Math.ceil(rawIdx);
+    return Vector3.lerp(points[startIdx], points[endIdx], ilerp(startIdx, endIdx, rawIdx), out);
 }
 
 class Spaces {
@@ -2446,6 +2532,7 @@ function beginMainLoop(state) {
     Space.autoResize(ctx);
     const spaces = new Spaces(ctx);
     const errorElem = document.getElementById('error');
+    errorElem.classList.add('hidden');
     const errorMsg = document.getElementById('error-msg');
     const errorStack = document.getElementById('error-stack');
     const savedCurr = document.getElementById('saved-curr');
@@ -2537,21 +2624,25 @@ function beginMainLoop(state) {
 class Mappings {
     /** @param {State} state */
     constructor(state) {
-        /** @type {iVector3[]} array of data points in physical coordinates */
+        /** @type {Vector3[]} array of data points in physical coordinates */
         this.physical = [];
-        /** @type {iVector3[]} corresponding array of data points in normalized coordinates */
+        /** @type {Vector3[]} corresponding array of data points in normalized coordinates */
         this.normalized = [];
-        /** @type {iVector3[]} flat array of data points in normalized coordinates */
+        /** @type {Vector3[]} flat array of data points in normalized coordinates */
         this.normalizedFlat = [];
+
+        this.normalizedCurve = [];
 
         Promise.all(
             [
                 this.readMapping('mappingPersp.json'),
-                this.readMapping('mappingFlat.json')
+                this.readMapping('mappingFlat.json'),
+                this.readMapping('mappingCurve.json')
             ]
-        ).then(([persp, flat]) => {
-            this.physical = persp;
+        ).then(([persp, flat, curve]) => {
+            this.physical = mapPointsToVector3s(persp);
             this.normalized = mapPointsToNormalizedCoords(persp);
+            this.normalizedCurve = mapPointsToNormalizedCoords(curve);
             this.normalizedFlat = mapPointsToNormalizedCoords(flat);
 
             state.data = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
@@ -2634,6 +2725,7 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
      * ```
      */
     const $ledData = $state.data;
+    $ledData.fill(0); // Set the color of all channels to 0
     /**
      * Any modifications you make to the properties of `$saved` will stick around
      * unless you click the reset button or call `$state.reset();`.
@@ -2646,21 +2738,87 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     Top.ui.label(`Top [normalizedFlat:${mappings.normalizedFlat.length}]`, 5, 5, { fill: 'white' });
 
 
+
     const points = mappings.normalized;
     let x = sin(elapsedMs * 0.0007);
-    for (let i = 0; i < points.length; i++) {
-        let pt = points[i];
-        let di = abs(x - pt[0]);
-        if (di < 0.5) {
-            $ledData[i * 3 + 0] = 255;
-        } else {
-            $ledData[i * 3 + 0] = 0;
+
+
+    Perspective.polyline(mappings.normalizedCurve, { stroke: 'black' });
+    Front.polyline(mappings.normalizedCurve, { stroke: 'black' });
+    Top.polyline(mappings.normalizedCurve, { stroke: 'black' });
+
+    //Anim1: Vertical line passing across the screen 
+    if ($saved.animState == 0) {
+        Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+        Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+        Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+
+
+
+        for (let i = 0; i < points.length; i++) {
+            let pt = points[i];
+            let di = abs(x - pt[0]);
+            if (di < 0.5) {
+                $ledData[i * 3 + 0] = 255;
+            } else {
+                $ledData[i * 3 + 0] = 0;
+            }
         }
     }
 
-    Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-    Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-    Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+    let rad1 = linMap(-1, 1, 0.1, 0.6, sin(elapsedMs * 0.0007)) * 0.9;
+    let rad2 = linMap(-1, 1, 0.7, 0.2, sin(elapsedMs * 0.0009)) * 0.8;
+    let evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
+
+    //Anim2: Circle expanding 
+    if ($saved.animState == 1) {
+        const sphere1Loc = interpBetweenPoints(mappings.normalizedCurve, evalCurve);
+        const sphere2Loc = [0.8, 0.8, 0];
+
+        Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
+        Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
+        Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
+
+        Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+        Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+        Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+
+        for (let i = 0; i < points.length; i++) {
+            let pt = points[i];
+            let di1 = pt.distTo(sphere1Loc);
+            let di2 = pt.distTo(sphere2Loc);
+            if (di1 < rad1) {
+                $ledData[i * 3 + 0] += 252;
+                $ledData[i * 3 + 1] += 186;
+                $ledData[i * 3 + 2] += 3;
+            }
+            if (di2 < rad2) {
+                $ledData[i * 3 + 0] += 3;
+                $ledData[i * 3 + 1] += 240;
+                $ledData[i * 3 + 2] += 252;
+            }
+        }
+    }
+
+
+    //Anim3: Polar line rotating
+    if ($saved.animState == 2) {
+        const sphere2Loc = [0, 0, 0];
+        let rot = [cos(elapsedMs * 0.001) + sphere2Loc[0], sin(elapsedMs * 0.001) + sphere2Loc[1], 0 + sphere2Loc[2]];
+        Perspective.line(sphere2Loc, rot, { color: 'blue' });
+        Front.line(sphere2Loc, rot, { color: 'blue' });
+        Top.line(sphere2Loc, rot, { color: 'blue' });
+
+        for (let i = 0; i < points.length; i++) {
+            let pt = points[i];
+            let di2 = pt.distTo(rot);
+            if (di2 < 0.6) {
+                $ledData[i * 3 + 0] += 255;
+                $ledData[i * 3 + 1] += 0;
+                $ledData[i * 3 + 2] += 255;
+            }
+        }
+    }
 
 
     let xxx = [1, 0, 0];
@@ -2720,11 +2878,14 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     if ($saved.cir.show = GUI.ui.checkbox('Anim', 5, uiY -= 30, $saved.cir.show)) {
 
 
-        if (GUI.ui.highlightButton('Anim1', $saved.animState === 1, 5, uiY -= 5)) {
-            $saved.animState = 1;
+        if (GUI.ui.highlightButton('Anim1', $saved.animState === 0, 5, uiY -= 5)) {
+            $saved.animState = 0;
         }
 
-        if (GUI.ui.highlightButton('Anim2', $saved.animState === 2, 5, uiY -= 5)) {
+        if (GUI.ui.highlightButton('Anim2', $saved.animState === 1, 5, uiY -= 5)) {
+            $saved.animState = 1;
+        }
+        if (GUI.ui.highlightButton('Anim3', $saved.animState === 2, 5, uiY -= 5)) {
             $saved.animState = 2;
         }
     }
