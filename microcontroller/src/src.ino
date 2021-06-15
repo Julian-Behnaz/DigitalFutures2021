@@ -72,7 +72,10 @@ void loop()
 
     if (g_countSinceSync >= TOTAL_BYTES_PER_FRAME)
     {
-        SERIAL_USB.println(" - Integrity violation!");
+        SERIAL_USB.print(" - Integrity violation: Expected ");
+        SERIAL_USB.print(TOTAL_BYTES_PER_FRAME, DEC);
+        SERIAL_USB.print(" bytes. Got: ");
+        SERIAL_USB.println(g_countSinceSync, DEC);
         g_countSinceSync = 0;
     }
     while (SERIAL_USB.available())
