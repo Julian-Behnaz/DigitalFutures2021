@@ -2680,9 +2680,9 @@ const $state = new State(
             z: false,
             zVal: 0,
         },
-        cir: {
+        anim: {
             show: false,
-            radius: 0,
+
         }
     }
 );
@@ -2738,84 +2738,79 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     Top.ui.label(`Top [normalizedFlat:${mappings.normalizedFlat.length}]`, 5, 5, { fill: 'white' });
 
 
+    if ($saved.anim.show) {
 
-    const points = mappings.normalized;
-    let x = sin(elapsedMs * 0.0007);
+        const points = mappings.normalized;
+        let x = sin(elapsedMs * 0.0007);
+        Perspective.polyline(mappings.normalizedCurve, { stroke: 'black' });
+        Front.polyline(mappings.normalizedCurve, { stroke: 'black' });
+        Top.polyline(mappings.normalizedCurve, { stroke: 'black' });
 
-
-    Perspective.polyline(mappings.normalizedCurve, { stroke: 'black' });
-    Front.polyline(mappings.normalizedCurve, { stroke: 'black' });
-    Top.polyline(mappings.normalizedCurve, { stroke: 'black' });
-
-    //Anim1: Vertical line passing across the screen 
-    if ($saved.animState == 0) {
-        Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-        Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-        Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-
-
-
-        for (let i = 0; i < points.length; i++) {
-            let pt = points[i];
-            let di = abs(x - pt[0]);
-            if (di < 0.5) {
-                $ledData[i * 3 + 0] = 255;
-            } else {
-                $ledData[i * 3 + 0] = 0;
+        //Anim1: Vertical line passing across the screen 
+        if ($saved.animState == 0) {
+            Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+            Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+            Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+            for (let i = 0; i < points.length; i++) {
+                let pt = points[i];
+                let di = abs(x - pt[0]);
+                if (di < 0.5) {
+                    $ledData[i * 3 + 0] = 255;
+                } else {
+                    $ledData[i * 3 + 0] = 0;
+                }
             }
         }
-    }
+        let rad1 = linMap(-1, 1, 0.1, 0.6, sin(elapsedMs * 0.0007)) * 0.9;
+        let rad2 = linMap(-1, 1, 0.7, 0.2, sin(elapsedMs * 0.0009)) * 0.8;
+        let evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
 
-    let rad1 = linMap(-1, 1, 0.1, 0.6, sin(elapsedMs * 0.0007)) * 0.9;
-    let rad2 = linMap(-1, 1, 0.7, 0.2, sin(elapsedMs * 0.0009)) * 0.8;
-    let evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
+        //Anim2: Circle expanding 
+        if ($saved.animState == 1) {
+            const sphere1Loc = interpBetweenPoints(mappings.normalizedCurve, evalCurve);
+            const sphere2Loc = [0.8, 0.8, 0];
 
-    //Anim2: Circle expanding 
-    if ($saved.animState == 1) {
-        const sphere1Loc = interpBetweenPoints(mappings.normalizedCurve, evalCurve);
-        const sphere2Loc = [0.8, 0.8, 0];
+            Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
+            Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
+            Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
 
-        Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
-        Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
-        Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
+            Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+            Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+            Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
 
-        Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-        Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-        Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-
-        for (let i = 0; i < points.length; i++) {
-            let pt = points[i];
-            let di1 = pt.distTo(sphere1Loc);
-            let di2 = pt.distTo(sphere2Loc);
-            if (di1 < rad1) {
-                $ledData[i * 3 + 0] += 252;
-                $ledData[i * 3 + 1] += 186;
-                $ledData[i * 3 + 2] += 3;
-            }
-            if (di2 < rad2) {
-                $ledData[i * 3 + 0] += 3;
-                $ledData[i * 3 + 1] += 240;
-                $ledData[i * 3 + 2] += 252;
+            for (let i = 0; i < points.length; i++) {
+                let pt = points[i];
+                let di1 = pt.distTo(sphere1Loc);
+                let di2 = pt.distTo(sphere2Loc);
+                if (di1 < rad1) {
+                    $ledData[i * 3 + 0] += 252;
+                    $ledData[i * 3 + 1] += 186;
+                    $ledData[i * 3 + 2] += 3;
+                }
+                if (di2 < rad2) {
+                    $ledData[i * 3 + 0] += 3;
+                    $ledData[i * 3 + 1] += 240;
+                    $ledData[i * 3 + 2] += 252;
+                }
             }
         }
-    }
 
+        //Anim3: Polar line rotating
+        if ($saved.animState == 2) {
+            const sphere2Loc = [0, 0, 0];
+            let rot = [cos(elapsedMs * 0.001) + sphere2Loc[0], sin(elapsedMs * 0.001) + sphere2Loc[1], 0 + sphere2Loc[2]];
+            Perspective.line(sphere2Loc, rot, { color: 'blue' });
+            Front.line(sphere2Loc, rot, { color: 'blue' });
+            Top.line(sphere2Loc, rot, { color: 'blue' });
 
-    //Anim3: Polar line rotating
-    if ($saved.animState == 2) {
-        const sphere2Loc = [0, 0, 0];
-        let rot = [cos(elapsedMs * 0.001) + sphere2Loc[0], sin(elapsedMs * 0.001) + sphere2Loc[1], 0 + sphere2Loc[2]];
-        Perspective.line(sphere2Loc, rot, { color: 'blue' });
-        Front.line(sphere2Loc, rot, { color: 'blue' });
-        Top.line(sphere2Loc, rot, { color: 'blue' });
-
-        for (let i = 0; i < points.length; i++) {
-            let pt = points[i];
-            let di2 = pt.distTo(rot);
-            if (di2 < 0.6) {
-                $ledData[i * 3 + 0] += 255;
-                $ledData[i * 3 + 1] += 0;
-                $ledData[i * 3 + 2] += 255;
+            for (let i = 0; i < points.length; i++) {
+                let pt = points[i];
+                let di2 = pt.distTo(rot);
+                if (di2 < 0.6) {
+                    $ledData[i * 3 + 0] += 255;
+                    $ledData[i * 3 + 1] += 0;
+                    $ledData[i * 3 + 2] += 255;
+                }
             }
         }
     }
@@ -2832,7 +2827,6 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
     Perspective.rectYZ([0, -0.5, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
     Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
-
 
     // Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
     // Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
@@ -2854,7 +2848,6 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     //NOTE: If there is an error where you write somethinf to state that you then read, which causes an error, recovering
     // is annoying. We have to either auto-reset or tell students to manually do $state.reset();
 
-
     if ($saved.rotation.x = GUI.ui.checkbox('Rotate X?', 5, uiY -= 5, $saved.rotation.x)) {
         $saved.rotation.xVal = GUI.ui.slider(`Rx`, 5, uiY -= 5, -1, 1, $saved.rotation.xVal);
         Perspective.rotateSpaceByX($saved.rotation.xVal * 0.02);
@@ -2875,8 +2868,7 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
 
     GUI.ui.circleButton('My Circle Bttn', 50, 60);
 
-    if ($saved.cir.show = GUI.ui.checkbox('Anim', 5, uiY -= 30, $saved.cir.show)) {
-
+    if ($saved.anim.show = GUI.ui.checkbox('Anim', 5, uiY -= 30, $saved.anim.show)) {
 
         if (GUI.ui.highlightButton('Anim1', $saved.animState === 0, 5, uiY -= 5)) {
             $saved.animState = 0;
