@@ -23,7 +23,8 @@ const DEVICE_BAUD_RATE = 115200;
  * @returns {boolean}
  */
 function isDesiredPortInfo(portInfo) {
-    return portInfo.vendorId === '16C0' || portInfo.vendorId === '16c0';
+    return (portInfo.vendorId === '2341' /* Arduino */
+        || (portInfo.vendorId === '16C0' || portInfo.vendorId === '16c0' /* Teensy */));
 }
 
 /**
@@ -68,6 +69,41 @@ const fs = require('fs'),
     http = require('http');
 const WebSocket = require('ws');
 const SerialPort = require('serialport');
+const Delimiter = require('@serialport/parser-delimiter')
+
+// See https://stackoverflow.com/questions/9781218/how-to-change-node-jss-console-font-color
+const ANSI_COLORS = {
+    reset: "\x1b[0m",
+    bright: "\x1b[1m",
+    dim: "\x1b[2m",
+    underscore: "\x1b[4m",
+    blink: "\x1b[5m",
+    reverse: "\x1b[7m",
+    hidden: "\x1b[8m",
+    
+    fg: {
+        black: "\x1b[30m",
+        red: "\x1b[31m",
+        green: "\x1b[32m",
+        yellow: "\x1b[33m",
+        blue: "\x1b[34m",
+        magenta: "\x1b[35m",
+        cyan: "\x1b[36m",
+        white: "\x1b[37m",
+        crimson: "\x1b[38m"
+    },
+    bg: {
+        black: "\x1b[40m",
+        red: "\x1b[41m",
+        green: "\x1b[42m",
+        yellow: "\x1b[43m",
+        blue: "\x1b[44m",
+        magenta: "\x1b[45m",
+        cyan: "\x1b[46m",
+        white: "\x1b[47m",
+        crimson: "\x1b[48m"
+    }
+};
 
 /**
  * This is a union of all the different possible states we might be in at any given point in time.
@@ -199,8 +235,10 @@ function areStatesApproxEqual(a, b) {
  */
 function reportDeviceStateIfChanged() {
     if (!areStatesApproxEqual(prevDeviceState, currDeviceState)) {
+        console.log('🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌');
         console.log('deviceState:');
         console.log(currDeviceState);
+        console.log('🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌');
         prevDeviceState = currDeviceState;
 
         if (websockets.status) {
@@ -292,16 +330,22 @@ async function scanForDevices(intervalMs) {
                         setDeviceStateUnableToConnect(err);
                         setDeviceStateScanning(deviceList);
                     } else {
+                        const parser = connectedDevice.pipe(new Delimiter({ delimiter: '\n' }));
+                        parser.setEncoding('utf8');
+                        parser.on('data', (read) => {
+                            logDevice('💬', read);
+                        });
+
                         // Device opened sucessfully
                         setDeviceStateConnected(info.path, info.vendorId, info.productId, info.serialNumber);
                     }
                 });
                 connectedDevice.on('close', () => {
-                    console.log('DEVICE CLOSED');
+                    logDevice('CLOSED');
                     setDeviceStateScanning(NO_DEVICES);
                 });
                 connectedDevice.on('error', (err) => {
-                    console.log('DEVICE ERROR', err);
+                    logDevice('ERROR', err);
                     setDeviceStateScanning(NO_DEVICES);
                 });
             } else {
@@ -316,7 +360,7 @@ async function scanForDevices(intervalMs) {
 const server = http.createServer(function (req, res) {
     const uri = new URL(req.url, `http://localhost:${BROWSER_PORT}/`);
     const pathname = uri.pathname === '/' ? '/index.html' : uri.pathname;
-    console.log('GOT REQUEST TO', pathname);
+    logServer('got request', pathname);
     fs.readFile(`${__dirname}/front${pathname}`, function (err, data) {
         if (err) {
             res.writeHead(404);
@@ -343,7 +387,7 @@ dataServer.on('connection', function connection(ws) {
             if (message instanceof Buffer) {
                 forwardBufferToDevice(connectedDevice, message);
             } else {
-                console.error('Message from dataServer is not a Buffer!')
+                logServer('Error', 'Message from dataServer is not a Buffer!');
             }
         }
     });
@@ -387,7 +431,7 @@ updateServer.on('connection', function connection(ws) {
      fsWait = setTimeout(() => {
        fsWait = null;
      }, 100);
-     console.log(`${filename} file Changed`);
+     logServer('file changed', filename);
      if (websockets.update) {
          websockets.update.send(JSON.stringify({changed: filename}));
      }
@@ -416,8 +460,25 @@ server.on('upgrade', function upgrade(request, socket, head) {
     }
 });
 
+function log(sys, action, color, ...msg) {
+    console.log(color, `[${sys} (${action})]`, ...msg, ANSI_COLORS.reset);
+}
+
+function logDevice(action, ...msg) {
+    log('DEVICE', action, ANSI_COLORS.fg.cyan, ...msg);
+}
+
+function logServer(action, ...msg) {
+    log('SERVER', action, ANSI_COLORS.dim, ...msg);
+}
+
+
 server.listen(BROWSER_PORT);
 console.log(`
+👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
+
 Open a browser to http://localhost:${BROWSER_PORT}/ to connect to the server ...
+
+👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
 `);
 scanForDevices(1000);
