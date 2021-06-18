@@ -7,17 +7,19 @@
 // CONFIG
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
-const int NUM_LEDS = 5 + 5 + 5 + 5 + 5 + 5 + 5 + 5;
+const int NUM_LEDS = 20;
+// + 5 + 5 + 5 + 5 + 5 + 5 + 5;
+#define BAUD_RATE 115200
 // 👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const int TOTAL_BYTES_PER_FRAME = NUM_LEDS * 3;
 CRGB g_dataBuffer[NUM_LEDS];
+char g_sync[3];
 
 #define SERIAL_USB Serial
 
 void setup()
 {
-    const int BAUD_RATE = 115200;
     SERIAL_USB.begin(BAUD_RATE);
     delay(1000);
     SERIAL_USB.println("Serial opened");
@@ -35,24 +37,24 @@ void setup()
      *   Since g_dataBuffer is defined as `CRGB g_dataBuffer[NUM_LEDS]`, and CRGB is a 3 byte struct,
      *   `g_dataBuffer + 2` would skip 2*3=6 bytes.
      * 👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
-     */ 
+     */
     int indexOffset = 0;
-    FastLED.addLeds<WS2811, 15 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 17 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 2 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 5 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 3 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 6 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 18 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
-    FastLED.addLeds<WS2811, 21 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
-    indexOffset += 5;
+    FastLED.addLeds<WS2811, 10 /* PIN */, GRB>(g_dataBuffer + indexOffset, 20 /* #LEDs in this strip */);
+    indexOffset += 20;
+    // FastLED.addLeds<WS2811, 10 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
+    // FastLED.addLeds<WS2811, 11 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
+    // FastLED.addLeds<WS2811, 12 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
+    // FastLED.addLeds<WS2811, 8 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
+    // FastLED.addLeds<WS2811, 6 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
+    // FastLED.addLeds<WS2811, 7 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
+    // FastLED.addLeds<WS2811, 5 /* PIN */, GRB>(g_dataBuffer + indexOffset, 5 /* #LEDs in this strip */);
+    // indexOffset += 5;
     // 👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
     SERIAL_USB.println("LEDs registered");
     delay(1000);
@@ -62,41 +64,49 @@ void setup()
 
 int g_countSinceSync = 0;
 bool g_blinker = true;
+bool g_gotStart = false;
 void loop()
 {
-    digitalWrite(13, g_blinker = !g_blinker);
-    if (SERIAL_USB.available() == 0)
+    if (!g_gotStart)
     {
-        return;
-    }
-
-    if (g_countSinceSync >= TOTAL_BYTES_PER_FRAME)
-    {
-        SERIAL_USB.print(" - Integrity violation: Expected ");
-        SERIAL_USB.print(TOTAL_BYTES_PER_FRAME, DEC);
-        SERIAL_USB.print(" bytes. Got: ");
-        SERIAL_USB.println(g_countSinceSync, DEC);
-        g_countSinceSync = 0;
-    }
-    while (SERIAL_USB.available())
-    {
-        // Synchronization bytes used to reduce chance for desync:
-        if (0xFF == SERIAL_USB.read() && 0xFE == SERIAL_USB.read() && 0xFD == SERIAL_USB.read())
+        while (SERIAL_USB.available())
         {
-            g_countSinceSync = 0;
-            int rec = SERIAL_USB.readBytes((char *)g_dataBuffer, TOTAL_BYTES_PER_FRAME);
-            if (rec == TOTAL_BYTES_PER_FRAME)
+            g_countSinceSync++;
+            if (SERIAL_USB.read() == 0xFF)
+            { // Start of a frame!
+                if (g_countSinceSync - 1 > TOTAL_BYTES_PER_FRAME)
+                {
+                    SERIAL_USB.print(" - Integrity violation: Expected ");
+                    SERIAL_USB.print(TOTAL_BYTES_PER_FRAME, DEC);
+                    SERIAL_USB.print(" bytes. Got before sync: ");
+                    SERIAL_USB.println(g_countSinceSync, DEC);
+                }
+                g_gotStart = true;
+                g_countSinceSync = 0;
+                break;
+            }
+            else if (g_countSinceSync < TOTAL_BYTES_PER_FRAME)
             {
-                FastLED.show();
+                SERIAL_USB.println(" - Too few bytes before sync!");
+            }
+        }
+    }
+    else
+    {
+        while (SERIAL_USB.available())
+        {
+            if (g_countSinceSync < TOTAL_BYTES_PER_FRAME)
+            {
+                ((char *)g_dataBuffer)[g_countSinceSync] = SERIAL_USB.read();
+                g_countSinceSync++;
+                break;
             }
             else
             {
-                SERIAL_USB.println(" - Dropped Frame!");
+                FastLED.show();
+                g_gotStart = false;
+                break;
             }
-        }
-        else
-        {
-            g_countSinceSync++;
         }
     }
 }

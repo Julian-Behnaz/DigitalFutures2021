@@ -36,18 +36,29 @@ function isDesiredPortInfo(portInfo) {
 function forwardBufferToDevice(device, buffer) {
     // Byte sequence the microcontroller expects to begin every message.
     // Used to reduce chance of desynchronization.
-    device.write([0xFF, 0xFE, 0xFD]);
+    // device.write(buffer);
+
+    // We use 0xFF to indicate the start of a frame
+    device.write([0xFF]);
+    for (let i = 0; i < buffer.length; i++) {
+        // If we see 0xFF in the regular buffer, use 0xFE instead.
+        // This will guarantee that 0xFF will only be used to indicate message starts
+        buffer[i] = buffer[i] === 0xFF ? 0xFE : buffer[i];
+    }
     device.write(buffer);
+    device.drain();
+
 
     // Example message. Might be useful for debugging color channel ordering.
-    // currDevice.write([
+    // device.write([
+    //     0xFF, 0xFE, 0xFD,
     //     0xFF, 0x00, 0x00, // R
     //     0x00, 0xFF, 0x00, // B
     //     0x00, 0x00, 0xFF, // G
     //     0xFF, 0xFF, 0xFF, // White
     //     0xFF, 0xFF, 0xFF, // White
     // ]);
-    // console.log(message);
+    // console.log(buffer);
 }
 
 /**
@@ -55,7 +66,7 @@ function forwardBufferToDevice(device, buffer) {
  * You'll be able to open http://localhost:BROWSER_PORT/
  * in a browser to open the webapp.
  */
- const BROWSER_PORT = 8080;
+const BROWSER_PORT = 8080;
 
 // 👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,7 +91,7 @@ const ANSI_COLORS = {
     blink: "\x1b[5m",
     reverse: "\x1b[7m",
     hidden: "\x1b[8m",
-    
+
     fg: {
         black: "\x1b[30m",
         red: "\x1b[31m",
@@ -121,24 +132,24 @@ const ANSI_COLORS = {
  * @property {'UnableToConnect'} status
  * @property {Error} err - the reason we were unable to connect
  */
- /**
- * One of the possible types of `DeviceState`.
- * @typedef {object} DeviceState_Connected
- * @property {'Connected'} status
- * @property {PortInfo} details - details for the device to which we are connected
- */
+/**
+* One of the possible types of `DeviceState`.
+* @typedef {object} DeviceState_Connected
+* @property {'Connected'} status
+* @property {PortInfo} details - details for the device to which we are connected
+*/
 
- /**
-  * Information about a device. Can be used to auto-connect to it even when plugged in to a different port or computer.
-  * @typedef {object} PortInfo
-  * @property {string} path - Path or identifier used to open the device. Typically something like tty/* on Mac/Linux and COM* on windows
-  * @property {string} [vendorId] - Example: `'2341'`. Identifier for the group that made the device. Somewhat consistent between platforms.
-  * @property {string} [productId] - Example: `'0043'`. Identifier for the specific product model. Somewhat consistent between platforms.
-  * @property {string} [serialNumber] - Example: `'752303138333518011C1'`. Device Serial# only present for USB devices. Somewhat consistent between platforms.
-  * @property {string} [manufacturer] - Example: `'Arduino (www.arduino.cc)'`. Who made the device. Often reported differently by different drivers.
-  * @property {string} [locationId] - Example: `'14500000'` or `undefined` or `'Port_#0003.Hub_#0001'`. Where the device is plugged in. Not guaranteed to be the same or present on all systems.
-  * @property {string} [pnpId] - Example: `'USB\\VID_2341&PID_0043\\752303138333518011C1'`. Plug and Play ID. Windows only?
-  */
+/**
+ * Information about a device. Can be used to auto-connect to it even when plugged in to a different port or computer.
+ * @typedef {object} PortInfo
+ * @property {string} path - Path or identifier used to open the device. Typically something like tty/* on Mac/Linux and COM* on windows
+ * @property {string} [vendorId] - Example: `'2341'`. Identifier for the group that made the device. Somewhat consistent between platforms.
+ * @property {string} [productId] - Example: `'0043'`. Identifier for the specific product model. Somewhat consistent between platforms.
+ * @property {string} [serialNumber] - Example: `'752303138333518011C1'`. Device Serial# only present for USB devices. Somewhat consistent between platforms.
+ * @property {string} [manufacturer] - Example: `'Arduino (www.arduino.cc)'`. Who made the device. Often reported differently by different drivers.
+ * @property {string} [locationId] - Example: `'14500000'` or `undefined` or `'Port_#0003.Hub_#0001'`. Where the device is plugged in. Not guaranteed to be the same or present on all systems.
+ * @property {string} [pnpId] - Example: `'USB\\VID_2341&PID_0043\\752303138333518011C1'`. Plug and Play ID. Windows only?
+ */
 
 
 /** 
@@ -199,7 +210,7 @@ const websockets = {
  */
 function areStatesApproxEqual(a, b) {
     if (a && b && a.status === b.status) {
-        switch(a.status) {
+        switch (a.status) {
             case 'Connected':
                 /** @type {DeviceState_Connected} */
                 const bConnected = (/** @type {DeviceState_Connected} */ b);
@@ -320,7 +331,7 @@ async function scanForDevices(intervalMs) {
             for (let i = 0; i < deviceList.length; i++) {
                 if (isDesiredPortInfo(deviceList[i])) {
                     info = deviceList[i];
-                    break;                    
+                    break;
                 }
             }
             if (info) {
@@ -330,6 +341,7 @@ async function scanForDevices(intervalMs) {
                         setDeviceStateUnableToConnect(err);
                         setDeviceStateScanning(deviceList);
                     } else {
+                        connectedDevice.flush();
                         const parser = connectedDevice.pipe(new Delimiter({ delimiter: '\n' }));
                         parser.setEncoding('utf8');
                         parser.on('data', (read) => {
@@ -424,19 +436,19 @@ updateServer.on('connection', function connection(ws) {
  * many back-to-back reloads due to noisy watch events.
  * @type {NodeJS.Timeout|null}
  */
- let fsWait = null;
- fs.watch('./front', {recursive: true}, (event, filename) => {
-   if (filename) {
-     if (fsWait !== null) { return; }
-     fsWait = setTimeout(() => {
-       fsWait = null;
-     }, 100);
-     logServer('file changed', filename);
-     if (websockets.update) {
-         websockets.update.send(JSON.stringify({changed: filename}));
-     }
-   }
- });
+let fsWait = null;
+fs.watch('./front', { recursive: true }, (event, filename) => {
+    if (filename) {
+        if (fsWait !== null) { return; }
+        fsWait = setTimeout(() => {
+            fsWait = null;
+        }, 100);
+        logServer('file changed', filename);
+        if (websockets.update) {
+            websockets.update.send(JSON.stringify({ changed: filename }));
+        }
+    }
+});
 
 server.on('upgrade', function upgrade(request, socket, head) {
     const uri = new URL(request.url, `http://localhost:${BROWSER_PORT}/`);

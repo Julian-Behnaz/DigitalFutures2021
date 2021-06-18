@@ -2710,34 +2710,34 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
         let evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
 
         //Anim2: Circle expanding 
-        if ($saved.animState == 1) {
-            const sphere1Loc = interpBetweenPoints(mappings.normalizedCurve, evalCurve);
-            const sphere2Loc = [0.8, 0.8, 0];
+        // if ($saved.animState == 1) {
+        //     const sphere1Loc = interpBetweenPoints(mappings.normalizedCurve, evalCurve);
+        //     const sphere2Loc = [0.8, 0.8, 0];
 
-            Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
-            Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
-            Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
+        //     Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
+        //     Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
+        //     Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
 
-            Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-            Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-            Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+        //     Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+        //     Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+        //     Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
 
-            for (let i = 0; i < points.length; i++) {
-                let pt = points[i];
-                let di1 = pt.distTo(sphere1Loc);
-                let di2 = pt.distTo(sphere2Loc);
-                if (di1 < rad1) {
-                    $ledData[i * 3 + 0] += 252;
-                    $ledData[i * 3 + 1] += 186;
-                    $ledData[i * 3 + 2] += 3;
-                }
-                if (di2 < rad2) {
-                    $ledData[i * 3 + 0] += 3;
-                    $ledData[i * 3 + 1] += 240;
-                    $ledData[i * 3 + 2] += 252;
-                }
-            }
-        }
+        //     for (let i = 0; i < points.length; i++) {
+        //         let pt = points[i];
+        //         let di1 = pt.distTo(sphere1Loc);
+        //         let di2 = pt.distTo(sphere2Loc);
+        //         if (di1 < rad1) {
+        //             $ledData[i * 3 + 0] += 252;
+        //             $ledData[i * 3 + 1] += 186;
+        //             $ledData[i * 3 + 2] += 3;
+        //         }
+        //         if (di2 < rad2) {
+        //             $ledData[i * 3 + 0] += 3;
+        //             $ledData[i * 3 + 1] += 240;
+        //             $ledData[i * 3 + 2] += 252;
+        //         }
+        //     }
+        // }
 
         //Anim3: Polar line rotating
         if ($saved.animState == 2) {
@@ -2945,9 +2945,13 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     //     state.animState = 2;
     // }
 
+}
+
+setInterval(() => {
+    const $ledData = $state.data;
     /**
      * Try to actually send the state of all the LEDs to the server,
      * which will pass them along to a connected microcontroller.
      */
     $state.trySendToMicrocontroller($ledData);
-}
+}, 1000 / 20);
