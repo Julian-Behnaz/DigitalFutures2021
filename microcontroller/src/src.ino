@@ -77,7 +77,7 @@ void loop()
      */ 
 
     while (SERIAL_USB.available()) {
-        digitalWrite(13, g_isReadingFrame);
+        digitalWrite(13, !g_isReadingFrame);
         int got = Serial.read();
         if (got == 0xFF) { // Got a frame header byte indicating the remaining bytes should be usable data
             if (g_isReadingFrame) {
