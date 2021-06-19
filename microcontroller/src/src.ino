@@ -62,50 +62,51 @@ void setup()
     pinMode(13, OUTPUT);
 }
 
-int g_countSinceSync = 0;
-bool g_blinker = true;
-bool g_gotStart = false;
+bool g_isReadingFrame = false;
+int g_dataBytesRead = TOTAL_BYTES_PER_FRAME; // Start with the state we would get after reading a frame
 void loop()
 {
-    if (!g_gotStart)
-    {
-        while (SERIAL_USB.available())
-        {
-            g_countSinceSync++;
-            if (SERIAL_USB.read() == 0xFF)
-            { // Start of a frame!
-                if (g_countSinceSync - 1 > TOTAL_BYTES_PER_FRAME)
-                {
-                    SERIAL_USB.print(" - Integrity violation: Expected ");
-                    SERIAL_USB.print(TOTAL_BYTES_PER_FRAME, DEC);
-                    SERIAL_USB.print(" bytes. Got before sync: ");
-                    SERIAL_USB.println(g_countSinceSync, DEC);
+    /**
+     * The general protocol implemented below is:
+     * Every "packet" begins with 0xFF and is followed by TOTAL_BYTES_PER_FRAME bytes that contain LED data
+     * and are not 0xFF. If we get too many or too few LED data bytes in a frame, we complain in a human-readable message.
+     * 
+     * When we get a 0xFF, we set `g_isReadingFrame = true` and reset g_dataBytesRead to 0.
+     * When we get any other byte, we read it into g_dataBuffer as long as g_isReadingFrame is true.
+     * When we get the final byte of a frame while g_isReadingFrame is true, we display the frame and set g_isReadingFrame = false.
+     */ 
+
+    while (SERIAL_USB.available()) {
+        digitalWrite(13, g_isReadingFrame);
+        int got = Serial.read();
+        if (got == 0xFF) { // Got a frame header byte indicating the remaining bytes should be usable data
+            if (g_isReadingFrame) {
+                // Message is too short because we expected to see non-start data
+                SERIAL_USB.print(" - Frame too short. Expected: ");
+                SERIAL_USB.print(TOTAL_BYTES_PER_FRAME, DEC);
+                SERIAL_USB.print(" bytes. Got: ");
+                SERIAL_USB.println(g_dataBytesRead, DEC);
+            } else if (g_dataBytesRead > TOTAL_BYTES_PER_FRAME) {
+                // Message is too long because we only expect to see a start symbol after reading a complete message
+                SERIAL_USB.print(" - Frame too long. Expected: ");
+                SERIAL_USB.print(TOTAL_BYTES_PER_FRAME, DEC);
+                SERIAL_USB.print(" bytes. Got: ");
+                SERIAL_USB.println(g_dataBytesRead, DEC);
+            }
+
+            // Irrespective of how we got here, getting 0xFF indicates that the next byte(s) should be LED data
+            g_isReadingFrame = true;
+            g_dataBytesRead = 0;
+        } else { // Got a data byte
+            if (g_isReadingFrame) {
+                ((char *)g_dataBuffer)[g_dataBytesRead] = (char)got;
+                if (++g_dataBytesRead == TOTAL_BYTES_PER_FRAME) {
+                    // We have read sufficient bytes for one frame, so display it and wait for the start of the next one
+                    FastLED.show();
+                    g_isReadingFrame = false;
                 }
-                g_gotStart = true;
-                g_countSinceSync = 0;
-                break;
-            }
-            else if (g_countSinceSync < TOTAL_BYTES_PER_FRAME)
-            {
-                SERIAL_USB.println(" - Too few bytes before sync!");
-            }
-        }
-    }
-    else
-    {
-        while (SERIAL_USB.available())
-        {
-            if (g_countSinceSync < TOTAL_BYTES_PER_FRAME)
-            {
-                ((char *)g_dataBuffer)[g_countSinceSync] = SERIAL_USB.read();
-                g_countSinceSync++;
-                break;
-            }
-            else
-            {
-                FastLED.show();
-                g_gotStart = false;
-                break;
+            } else {
+                g_dataBytesRead++;
             }
         }
     }
