@@ -91,6 +91,20 @@ const min = Math.min;
 const max = Math.max;
 
 /**
+ * Returns the greatest integer less than or equal to `value`.
+ * @param {number} value
+ * @returns {number}
+ */
+const floor = Math.floor;
+
+/**
+ * Returns the smallest integer greater than or equal to `value`.
+ * @param {number} value
+ * @returns {number}
+ */
+const ceil = Math.ceil;
+
+/**
  * Linearly interpolates between `a` and `b` via `t`.
  * Returns `a` if `t` is 0.
  * Returns `b` if `t` is 1.
@@ -1124,6 +1138,25 @@ class Bounds3D {
      */
     union(bounds, out) {
         return Bounds3D.fromUnion(this, bounds, out);
+    }
+
+    /**
+     * Returns a scale factor that, when used to scale points,
+     * will guarantee that every point fits within a unit cube.
+     * 
+     * This scale factor is equal to 1/maxAxisDist, where
+     * maxAxisDist is the length of the axis-aligned line
+     * that extends from the origin to an corner of the bounding box
+     * furthest from the origin.
+     * @returns {number}
+     */
+    getNormalizingScaleFactor() {
+        let maxAxisDist = -Infinity;
+        for (let i = 0; i < this.lo.length; i++) {
+            maxAxisDist = Math.max(maxAxisDist, Math.abs(this.lo[i]));
+            maxAxisDist = Math.max(maxAxisDist, Math.abs(this.hi[i]));
+        }
+        return 1 / maxAxisDist;
     }
 }
 
@@ -2324,34 +2357,21 @@ class View extends Space {
 
 /**
  * Given some data points, returns a new `Vector3` array
- * containing corresponding points uniformly scaled down based on the 
- * given bounding box. If the bounding box encompasses all
- * the points, we guarantee that the resulting points will all
- * fit in the unit cube ranging from [-1,-1,-1] to [1,1,1].
+ * containing corresponding points uniformly scaled by
+ * the given scale factor.
  * 
  * @param {iVector3[]} dataPoints
- * @param {Bounds3D} [boundingBox] - [OPTIONAL] 
+ * @param {number} scaleFactor
  * @returns {Vector3[]}
  */
-function mapPointsToNormalizedCoords(dataPoints, boundingBox) {
-    if (boundingBox === undefined) {
-        boundingBox = Bounds3D.fromPoints(dataPoints);
-    }
-
-    let maxBoundValue = -Infinity;
-    for (let i = 0; i < boundingBox.lo.length; i++) {
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(boundingBox.lo[i]));
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(boundingBox.hi[i]));
-    }
-    const scaleFactor = 1 / maxBoundValue;
-
-    const normalizedPoints = [];
+function mapPointsToScaledPoints(dataPoints, scaleFactor) {
+    const scaledPoints = [];
     for (let i = 0; i < dataPoints.length; i++) {
         const pt = dataPoints[i];
-        const scaledPt = Vector3.create(pt[0] * scaleFactor, pt[1] * scaleFactor, pt[2] * scaleFactor);
-        normalizedPoints.push(scaledPt);
+        const scaledPt = Vector3.scaled(pt, scaleFactor);
+        scaledPoints.push(scaledPt);
     }
-    return normalizedPoints;
+    return scaledPoints;
 }
 
 /**
@@ -2378,8 +2398,8 @@ function mapPointsToVector3s(dataPoints) {
  */
 function interpBetweenPoints(points, t, out) {
     const rawIdx = lerp(0, points.length - 1, clamp01(t));
-    const startIdx = Math.floor(rawIdx);
-    const endIdx = Math.ceil(rawIdx);
+    const startIdx = floor(rawIdx);
+    const endIdx = ceil(rawIdx);
     return Vector3.lerp(points[startIdx], points[endIdx], ilerp(startIdx, endIdx, rawIdx), out);
 }
 
@@ -2626,8 +2646,6 @@ function beginMainLoop(msPerFrame, state) {
 class Mappings {
     /** @param {State} state */
     constructor(state) {
-        /** @type {Vector3[]} array of data points in physical coordinates */
-        this.physical = [];
         /** @type {Vector3[]} corresponding array of data points in normalized coordinates */
         this.normalized = [];
         /** @type {Vector3[]} flat array of data points in normalized coordinates */
@@ -2642,17 +2660,25 @@ class Mappings {
                 this.readMapping('mappingCurve.json'),
             ]
         ).then(([persp, flat, curve]) => {
-            this.physical = mapPointsToVector3s(persp);
-            const perspBounds = Bounds3D.fromPoints(persp);
-            const curveBounds = Bounds3D.fromPoints(curve);
-            const flatBounds = Bounds3D.fromPoints(flat);
-            const fullBounds = perspBounds.union(curveBounds).union(flatBounds);
+            const numberOfLEDs = persp.length;
 
-            this.normalized = mapPointsToNormalizedCoords(persp, fullBounds);
-            this.normalizedCurve = mapPointsToNormalizedCoords(curve, fullBounds);
-            this.normalizedFlat = mapPointsToNormalizedCoords(flat, fullBounds);
+            {
+                const perspBounds = Bounds3D.fromPoints(persp);
+                const curveBounds = Bounds3D.fromPoints(curve);
+                const fullBounds = perspBounds.union(curveBounds);
 
-            state.ledData = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
+                const scaleFactor = fullBounds.getNormalizingScaleFactor();
+                this.normalized = mapPointsToScaledPoints(persp, scaleFactor);
+                this.normalizedCurve = mapPointsToScaledPoints(curve, scaleFactor);
+            }
+
+            {
+                const flatBounds = Bounds3D.fromPoints(flat);
+                const scaleFactor = flatBounds.getNormalizingScaleFactor();
+                this.normalizedFlat = mapPointsToScaledPoints(flat, scaleFactor);
+            }
+
+            state.ledData = new Uint8ClampedArray(numberOfLEDs * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
         });
     }
 
@@ -2802,7 +2828,7 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
         Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
     }
 
-
+    // $saved.anim.show = false;
     if ($saved.anim.show) {
         //Anim1: Vertical line passing across the screen 
         if ($saved.animState == 0) {
@@ -2819,6 +2845,50 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
             exampleAnim3(elapsedMs, dtMs, spaces, mappings);
         }
     }
+
+    // 0 1 2  3 4 5  6 7 8  9 10 11
+    // R G B  R G B  R G B  R  G  B 
+    //   0      1      2       3
+
+    // for (let i = 0; i < $ledData.length; i++) {
+    //     $ledData[i] = 200;
+    // }
+
+
+    // const ledIndex2 = Math.floor(linMap(-1, 1, 0, $ledData.length / 3, cos(elapsedMs * 0.001)));
+    // $ledData[ledIndex * 3 + 0] = 255;
+    // $ledData[ledIndex2 * 3 + 0] = 255;
+    // linMap(-1, 1, 0, 255, sin(elapsedMs * 0.001));
+    // const ledIndex = Math.floor(linMap(-1, 1, 0, $ledData.length / 3, sin(elapsedMs * 0.0001)));
+
+    // $saved.sliderState = GUI.ui.slider('linePos', 20, 20, -1, 1, $saved.sliderState);
+    const x = sin(elapsedMs * 0.001);
+    const points = mappings.normalizedFlat;
+    Top.line([x, -1, 0], [x, 1, 0], { color: 'yellow' });
+    // for (let i = 0; i < $ledData.length / 3; i++) {
+    //     if (x - ilerp(0, $ledData.length / 3, i) > 0.1) {
+    //         $ledData[i * 3 + 0] = 255;
+    //     }
+    // }
+    for (let i = 0; i < points.length; i++) {
+        const pt = points[i];
+        const dist = abs(pt[0] - x);
+        // $ledData[i * 3 + 0] = 255;
+        // if (abs(pt[0] - x) < 0.1) {
+        // }
+        // Top.sphere(points[i], dist * 0.1);
+        $ledData[i * 3 + 0] = (1 - dist * 1.9) * 255;
+    }
+    // for (let i = 0; i < $ledData.length / 3; i++) {
+    //     if (i < ledIndex + 10) {
+    //         $ledData[ledIndex * 3 + 0] = 255;
+    //         $ledData[ledIndex * 3 + 1] = 255;
+    //     }
+    // }
+
+
+
+    // $ledData[20 * 3 + 2] = 255;
 
     // Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
     // Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
