@@ -12,7 +12,7 @@
  * This needs to match the baud rate in the microcontroller code
  * so that this server can talk to the microcontroller.
  */
-const DEVICE_BAUD_RATE = 115200;
+const DEVICE_BAUD_RATE = 1000000;
 /**
  * Returns `true` if the passed `portInfo` matches the device you want to
  * autoconnect to. You'll probably need to change this depending

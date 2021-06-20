@@ -1051,6 +1051,82 @@ Matrix4x4.__temp = Matrix4x4.identity();
 // @ts-ignore
 Matrix4x4.__temp2 = Matrix4x4.identity();
 
+/**
+ * A 3d bounding box with a `lo` and `hi` property.
+ * `lo` is the smallest x,y,z point and `hi` is the biggest x,y,z point
+ */
+class Bounds3D {
+    lo = Vector3.create(Infinity, Infinity, Infinity)
+    hi = Vector3.create(-Infinity, -Infinity, -Infinity)
+
+    /**
+     * Returns a bounding box that encompasses the
+     * given points. If `out` is provided, modifies it
+     * instead of creating new `Bounds3D`.
+     * @param {iVector3[]} points
+     * @param {Bounds3D} [out]
+     * @returns {Bounds3D}
+     */
+    static fromPoints(points, out) {
+        if (out === undefined) {
+            out = new Bounds3D();
+        }
+        const lo = out.lo;
+        const hi = out.hi;
+        for (let i = 0; i < points.length; i++) {
+            const pt = points[i];
+            // Only allow the point to modify the extents if it is
+            // not alreay encompassed in the bounds
+            lo[0] = Math.min(lo[0], pt[0]);
+            lo[1] = Math.min(lo[1], pt[1]);
+            lo[2] = Math.min(lo[2], pt[2]);
+
+            hi[0] = Math.max(hi[0], pt[0]);
+            hi[1] = Math.max(hi[1], pt[1]);
+            hi[2] = Math.max(hi[2], pt[2]);
+        }
+        return out;
+    }
+
+    /**
+     * Returns a bounding box that encompasses the
+     * the passed bounding boxes. If `out` is provided, modifies it
+     * instead of creating new `Bounds3D`.
+     * @param {Bounds3D} a
+     * @param {Bounds3D} b
+     * @param {Bounds3D} [out]
+     * @returns {Bounds3D}
+     */
+    static fromUnion(a, b, out) {
+        if (out === undefined) {
+            out = new Bounds3D();
+        }
+        const lo = out.lo;
+        const hi = out.hi;
+        lo[0] = Math.min(a.lo[0], b.lo[0]);
+        lo[1] = Math.min(a.lo[1], b.lo[1]);
+        lo[2] = Math.min(a.lo[2], b.lo[2]);
+
+        hi[0] = Math.max(a.hi[0], b.hi[0]);
+        hi[1] = Math.max(a.hi[1], b.hi[1]);
+        hi[2] = Math.max(a.hi[2], b.hi[2]);
+
+        return out;
+    }
+
+    /**
+     * Returns a bounding box that encompasses `this` and
+     * the passed bounding boxe. If `out` is provided, modifies it
+     * instead of creating new `Bounds3D`.
+     * @param {Bounds3D} bounds
+     * @param {Bounds3D} [out]
+     * @returns {Bounds3D}
+     */
+    union(bounds, out) {
+        return Bounds3D.fromUnion(this, bounds, out);
+    }
+}
+
 
 
 
@@ -2247,52 +2323,25 @@ class View extends Space {
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Computes the bounding box of a set of points, returning a 3d array where each element
- * is a 2d array containing the min and max extent of that dimension
+ * Given some data points, returns a new `Vector3` array
+ * containing corresponding points uniformly scaled down based on the 
+ * given bounding box. If the bounding box encompasses all
+ * the points, we guarantee that the resulting points will all
+ * fit in the unit cube ranging from [-1,-1,-1] to [1,1,1].
+ * 
  * @param {iVector3[]} dataPoints
- * @returns {[[minX:number,maxX:number], [minY:number,maxY:number], [minZ:number,maxZ:number]]}
- */
-function computeBoundingBox(dataPoints) {
-    // Initialize a bounding box that contains nothing:
-    /** @type {[number, number]} */
-    const minMaxX = [Infinity, -Infinity];
-    /** @type {[number, number]} */
-    const minMaxY = [Infinity, -Infinity];
-    /** @type {[number, number]} */
-    const minMaxZ = [Infinity, -Infinity];
-
-    // Loop through all the points and compute their
-    // minimum and maximum extents on every axis:
-    for (let i = 0; i < dataPoints.length; i++) {
-        const pt = dataPoints[i];
-        // Only allow the point to modify the extents if it is
-        // not alreay encompassed in the bounds
-        minMaxX[0] = Math.min(minMaxX[0], pt[0]);
-        minMaxX[1] = Math.max(minMaxX[1], pt[0]);
-
-        minMaxY[0] = Math.min(minMaxY[0], pt[1]);
-        minMaxY[1] = Math.max(minMaxY[1], pt[1]);
-
-        minMaxZ[0] = Math.min(minMaxZ[0], pt[2]);
-        minMaxZ[1] = Math.max(minMaxZ[1], pt[2]);
-    }
-    return [minMaxX, minMaxY, minMaxZ];
-}
-
-/**
- * Given some data points, converts them to points in a normalized coordinate space.
- * such that the max values are at 1 or -1.
- * @param {iVector3[]} dataPoints
+ * @param {Bounds3D} [boundingBox] - [OPTIONAL] 
  * @returns {Vector3[]}
  */
-function mapPointsToNormalizedCoords(dataPoints) {
-    const bounds = computeBoundingBox(dataPoints);
+function mapPointsToNormalizedCoords(dataPoints, boundingBox) {
+    if (boundingBox === undefined) {
+        boundingBox = Bounds3D.fromPoints(dataPoints);
+    }
 
     let maxBoundValue = -Infinity;
-    for (let i = 0; i < bounds.length; i++) {
-        const axisMinMax = bounds[i];
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[0]));
-        maxBoundValue = Math.max(maxBoundValue, Math.abs(axisMinMax[1]));
+    for (let i = 0; i < boundingBox.lo.length; i++) {
+        maxBoundValue = Math.max(maxBoundValue, Math.abs(boundingBox.lo[i]));
+        maxBoundValue = Math.max(maxBoundValue, Math.abs(boundingBox.hi[i]));
     }
     const scaleFactor = 1 / maxBoundValue;
 
@@ -2365,7 +2414,7 @@ class Spaces {
  */
 class State {
     /** Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED. */
-    data = new Uint8ClampedArray(0);
+    ledData = new Uint8ClampedArray(0);
     /**
      * @type {SavedValues}
      */
@@ -2509,9 +2558,10 @@ State.STORAGE_KEY = 'InstallationState';
 
 /**
  * Start the main animation loop
+ * @param {number} msPerFrame 
  * @param {State} state 
  */
-function beginMainLoop(state) {
+function beginMainLoop(msPerFrame, state) {
     const mappings = new Mappings(state);
     /** @type {HTMLCanvasElement} */
     const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
@@ -2519,12 +2569,14 @@ function beginMainLoop(state) {
     const ctx = canvas.getContext('2d');
     Space.autoResize(ctx);
     const spaces = new Spaces(ctx);
+    let lastMsTs = performance.now();
 
     /**
      * Main animation loop
-     * @param {number} elapsedMs Number of milliseconds that elapsed since the last call.
+     * @param {number} elapsedMs Number of milliseconds that elapsed since the beginning.
+     * @param {number} dtMs Number of milliseconds that elapsed since the last call.
      */
-    function _loop(elapsedMs) {
+    function _loop(elapsedMs, dtMs) {
         Space.autoResize(ctx);
         const Frames = spaces.Frames;
         const Perspective = spaces.Perspective;
@@ -2544,13 +2596,19 @@ function beginMainLoop(state) {
 
         Top.setSpaceRotation(0, 0, 0);
         Top.axes(1, 6, { stroke: 0xFFFFFF, thickness: 0.5 });
-        loop(elapsedMs, spaces, mappings);
+        loop(elapsedMs, dtMs, spaces, mappings);
         spaces.onFrameEnd();
         Space.onFrameEnd();
-        requestAnimationFrame(_loop);
+
+        const newMsTs = performance.now();
+        lastMsTs = elapsedMs;
+        const dt = newMsTs - lastMsTs;
+        setTimeout(_loop, msPerFrame, newMsTs, dt);
+        // requestAnimationFrame(_loop);
 
     }
-    requestAnimationFrame(_loop);
+    setTimeout(_loop, msPerFrame, msPerFrame, msPerFrame);
+    // requestAnimationFrame(_loop);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -2581,15 +2639,20 @@ class Mappings {
             [
                 this.readMapping('mappingPersp.json'),
                 this.readMapping('mappingFlat.json'),
-                this.readMapping('mappingCurve.json')
+                this.readMapping('mappingCurve.json'),
             ]
         ).then(([persp, flat, curve]) => {
             this.physical = mapPointsToVector3s(persp);
-            this.normalized = mapPointsToNormalizedCoords(persp);
-            this.normalizedCurve = mapPointsToNormalizedCoords(curve);
-            this.normalizedFlat = mapPointsToNormalizedCoords(flat);
+            const perspBounds = Bounds3D.fromPoints(persp);
+            const curveBounds = Bounds3D.fromPoints(curve);
+            const flatBounds = Bounds3D.fromPoints(flat);
+            const fullBounds = perspBounds.union(curveBounds).union(flatBounds);
 
-            state.data = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
+            this.normalized = mapPointsToNormalizedCoords(persp, fullBounds);
+            this.normalizedCurve = mapPointsToNormalizedCoords(curve, fullBounds);
+            this.normalizedFlat = mapPointsToNormalizedCoords(flat, fullBounds);
+
+            state.ledData = new Uint8ClampedArray(persp.length * 3); // 3 bytes per LED, for Red, Green, Blue channels of each LED
         });
     }
 
@@ -2630,15 +2693,17 @@ const $state = new State(
         }
     }
 );
-beginMainLoop($state);
+beginMainLoop(/* msPerFrame */1000 / 60, $state);
 
 /**
- * Animation loop function. Called at the screen refresh rate (typically 60x per second).
+ * Animation loop function. Called approximately at the update rate.
  * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
+ * @param {number} dtMs Number of milliseconds elapsed since last frame
  * @param {Spaces} spaces 
  * @param {Mappings} mappings 
  */
-function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
+function loop(elapsedMs, dtMs, spaces, mappings) {
+    const { Front, Perspective, Top, GUI } = spaces;
     /** 
      * Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED.
      * 
@@ -2668,7 +2733,7 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
      * $ledData[n*3 + 2]
      * ```
      */
-    const $ledData = $state.data;
+    const $ledData = $state.ledData;
     $ledData.fill(0); // Set the color of all channels to 0
     /**
      * Any modifications you make to the properties of `$saved` will stick around
@@ -2677,160 +2742,98 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
      */
     const $saved = $state.saved;
 
-    Front.ui.label(`Front [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
-    Perspective.ui.label(`Perspective [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
-    Top.ui.label(`Top [normalizedFlat:${mappings.normalizedFlat.length}]`, 5, 5, { fill: 'white' });
 
-
-    if ($saved.anim.show) {
-
-        const points = mappings.normalized;
-        let x = sin(elapsedMs * 0.0007);
-        Perspective.polyline(mappings.normalizedCurve, { stroke: 'black' });
-        Front.polyline(mappings.normalizedCurve, { stroke: 'black' });
-        Top.polyline(mappings.normalizedCurve, { stroke: 'black' });
-
-        //Anim1: Vertical line passing across the screen 
-        if ($saved.animState == 0) {
-            Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-            Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-            Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
-            for (let i = 0; i < points.length; i++) {
-                let pt = points[i];
-                let di = abs(x - pt[0]);
-                if (di < 0.5) {
-                    $ledData[i * 3 + 0] = 255;
-                } else {
-                    $ledData[i * 3 + 0] = 0;
-                }
-            }
+    { // Main UI
+        const uiX = 5;
+        let uiY = GUI.ui.top();
+        // GUI.ui.label(`Default Values: ${JSON.stringify($state.savedDefaults)}`, 5, uiY -= 5);
+        // GUI.ui.label(`Saved Values: ${JSON.stringify($saved)}`, 5, uiY -= 5);
+        if (GUI.ui.button('Reset State', 5, uiY -= 5)) {
+            $state.reset();
         }
-        let rad1 = linMap(-1, 1, 0.1, 0.6, sin(elapsedMs * 0.0007)) * 0.9;
-        let rad2 = linMap(-1, 1, 0.7, 0.2, sin(elapsedMs * 0.0009)) * 0.8;
-        let evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
 
-        //Anim2: Circle expanding 
-        // if ($saved.animState == 1) {
-        //     const sphere1Loc = interpBetweenPoints(mappings.normalizedCurve, evalCurve);
-        //     const sphere2Loc = [0.8, 0.8, 0];
+        if ($saved.rotation.x = GUI.ui.checkbox('Rotate X?', uiX, uiY -= 5, $saved.rotation.x)) {
+            $saved.rotation.xVal = GUI.ui.slider(`Rx`, uiX, uiY -= 5, -1, 1, $saved.rotation.xVal);
+            Perspective.rotateSpaceByX($saved.rotation.xVal * dtMs * 0.002);
+        }
+        if ($saved.rotation.y = GUI.ui.checkbox('Rotate Y?', uiX, uiY -= 5, $saved.rotation.y)) {
+            $saved.rotation.yVal = GUI.ui.slider(`Ry`, uiX, uiY -= 5, -1, 1, $saved.rotation.yVal);
+            Perspective.rotateSpaceByY($saved.rotation.yVal * dtMs * 0.002);
+        }
+        if ($saved.rotation.z = GUI.ui.checkbox('Rotate Z?', uiX, uiY -= 5, $saved.rotation.z)) {
+            $saved.rotation.zVal = GUI.ui.slider(`Rz`, uiX, uiY -= 5, -1, 1, $saved.rotation.zVal);
+            Perspective.rotateSpaceByZ($saved.rotation.zVal * dtMs * 0.002);
+        }
+    }
 
-        //     Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
-        //     Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
-        //     Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
-
-        //     Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-        //     Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-        //     Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
-
-        //     for (let i = 0; i < points.length; i++) {
-        //         let pt = points[i];
-        //         let di1 = pt.distTo(sphere1Loc);
-        //         let di2 = pt.distTo(sphere2Loc);
-        //         if (di1 < rad1) {
-        //             $ledData[i * 3 + 0] += 252;
-        //             $ledData[i * 3 + 1] += 186;
-        //             $ledData[i * 3 + 2] += 3;
-        //         }
-        //         if (di2 < rad2) {
-        //             $ledData[i * 3 + 0] += 3;
-        //             $ledData[i * 3 + 1] += 240;
-        //             $ledData[i * 3 + 2] += 252;
-        //         }
-        //     }
-        // }
-
-        //Anim3: Polar line rotating
-        if ($saved.animState == 2) {
-            const sphere2Loc = [0, 0, 0];
-            let rot = [cos(elapsedMs * 0.001) + sphere2Loc[0], sin(elapsedMs * 0.001) + sphere2Loc[1], 0 + sphere2Loc[2]];
-            Perspective.line(sphere2Loc, rot, { color: 'blue' });
-            Front.line(sphere2Loc, rot, { color: 'blue' });
-            Top.line(sphere2Loc, rot, { color: 'blue' });
-
-            for (let i = 0; i < points.length; i++) {
-                let pt = points[i];
-                let di2 = pt.distTo(rot);
-                if (di2 < 0.6) {
-                    $ledData[i * 3 + 0] += 255;
-                    $ledData[i * 3 + 1] += 0;
-                    $ledData[i * 3 + 2] += 255;
-                }
+    { // Animation UI
+        let uiY = GUI.ui.top();
+        let uiX = 50;
+        if ($saved.anim.show = GUI.ui.checkbox('Anim', uiX, uiY -= 15, $saved.anim.show)) {
+            uiX += 5;
+            if (GUI.ui.highlightButton('Anim1', $saved.animState === 0, uiX, uiY -= 5)) {
+                $saved.animState = 0;
+            }
+            if (GUI.ui.highlightButton('Anim2', $saved.animState === 1, uiX, uiY -= 5)) {
+                $saved.animState = 1;
+            }
+            if (GUI.ui.highlightButton('Anim3', $saved.animState === 2, uiX, uiY -= 5)) {
+                $saved.animState = 2;
             }
         }
     }
 
+    { // Status UI
+        let uiY = GUI.ui.bottom() + 2;
+        GUI.ui.label(`Device Status: ${$state.deviceState.status}`, 2, uiY);
+        GUI.ui.label(`Connected to Server: ${$state.statusWs.readyState === WebSocket.OPEN}`, 2, uiY += 5);
+    }
 
-    let xxx = [1, 0, 0];
-    let yyy = [0, 1, 0];
-    let zzz = [0, 0, 1];
-    Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 2 });
-    Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 2 });
-    Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 2 });
+    { // Draw some perspective helper UI
+        let xxx = [1, 0, 0];
+        let yyy = [0, 1, 0];
+        let zzz = [0, 0, 1];
+        Perspective.line([0, 0, 0], xxx, { color: 'red', thickness: 2 });
+        Perspective.line([0, 0, 0], yyy, { color: 'green', thickness: 2 });
+        Perspective.line([0, 0, 0], zzz, { color: 'blue', thickness: 2 });
+
+        Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
+        Perspective.rectYZ([0, -0.5, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
+        Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
+    }
 
 
-    Perspective.rectXY([-0.5, -0.5, 0], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
-    Perspective.rectYZ([0, -0.5, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
-    Perspective.rectXZ([-0.5, 0, -0.5], 1, 1, { stroke: 0xFFFF001F, thickness: 2 });
+    if ($saved.anim.show) {
+        //Anim1: Vertical line passing across the screen 
+        if ($saved.animState == 0) {
+            exampleAnim1(elapsedMs, dtMs, spaces, mappings);
+        }
+
+        //Anim2: Polar line rotating
+        if ($saved.animState == 1) {
+            exampleAnim2(elapsedMs, dtMs, spaces, mappings);
+        }
+
+        //Anim3: Circle expanding 
+        if ($saved.animState == 2) {
+            exampleAnim3(elapsedMs, dtMs, spaces, mappings);
+        }
+    }
 
     // Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
     // Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
     // Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
     // GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
 
-    Front.drawLeds(mappings.normalized, $ledData);
-    Top.drawLeds(mappings.normalizedFlat, $ledData);
-    Perspective.drawLeds(mappings.normalized, $ledData);
 
 
-    let uiY = GUI.ui.top();
-    // GUI.ui.label(`Default Values: ${JSON.stringify($state.savedDefaults)}`, 5, uiY -= 5);
-    // GUI.ui.label(`Saved Values: ${JSON.stringify($saved)}`, 5, uiY -= 5);
-    if (GUI.ui.button('Reset State', 5, uiY -= 5)) {
-        $state.reset();
-    }
-    // $state.reset();
-    //NOTE: If there is an error where you write somethinf to state that you then read, which causes an error, recovering
-    // is annoying. We have to either auto-reset or tell students to manually do $state.reset();
-
-    if ($saved.rotation.x = GUI.ui.checkbox('Rotate X?', 5, uiY -= 5, $saved.rotation.x)) {
-        $saved.rotation.xVal = GUI.ui.slider(`Rx`, 5, uiY -= 5, -1, 1, $saved.rotation.xVal);
-        Perspective.rotateSpaceByX($saved.rotation.xVal * 0.02);
-    }
-    if ($saved.rotation.y = GUI.ui.checkbox('Rotate Y?', 5, uiY -= 5, $saved.rotation.y)) {
-        $saved.rotation.yVal = GUI.ui.slider(`Ry`, 5, uiY -= 5, -1, 1, $saved.rotation.yVal);
-        Perspective.rotateSpaceByY($saved.rotation.yVal * 0.02);
-    }
-    if ($saved.rotation.z = GUI.ui.checkbox('Rotate Z?', 5, uiY -= 5, $saved.rotation.z)) {
-        $saved.rotation.zVal = GUI.ui.slider(`Rz`, 5, uiY -= 5, -1, 1, $saved.rotation.zVal);
-        Perspective.rotateSpaceByZ($saved.rotation.zVal * 0.02);
-    }
     // Some other buttons for drawing objects
     // if ($saved.cir.show = GUI.ui.checkbox('Circle', 5, uiY -= 5, $saved.cir.show)) {
     //     $saved.cir.radius = GUI.ui.slider(`Rad`, 5, uiY -= 5, 0, 1, $saved.cir.radius);
     //     Perspective.sphere([0, 0, 0], $saved.cir.radius);
     // }
-    GUI.ui.circleButton('My Circle Bttn', 50, 60);
+    // GUI.ui.circleButton('My Circle Bttn', 50, 60);
 
-    if ($saved.anim.show = GUI.ui.checkbox('Anim', 5, uiY -= 30, $saved.anim.show)) {
-
-        if (GUI.ui.highlightButton('Anim1', $saved.animState === 0, 5, uiY -= 5)) {
-            $saved.animState = 0;
-        }
-
-        if (GUI.ui.highlightButton('Anim2', $saved.animState === 1, 5, uiY -= 5)) {
-            $saved.animState = 1;
-        }
-        if (GUI.ui.highlightButton('Anim3', $saved.animState === 2, 5, uiY -= 5)) {
-            $saved.animState = 2;
-        }
-    }
-
-
-
-    // For checking if error handling works:
-    // let ff = 6;
-    // ff.hi = 8;
-    // .
 
     // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
 
@@ -2945,13 +2948,123 @@ function loop(elapsedMs, { Front, Perspective, Top, GUI }, mappings) {
     //     state.animState = 2;
     // }
 
-}
 
-setInterval(() => {
-    const $ledData = $state.data;
+    { // Actually display LEDs in different views (and label the views)
+        Front.ui.label(`Front [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
+        Front.drawLeds(mappings.normalized, $ledData);
+
+        Perspective.ui.label(`Perspective [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
+        Perspective.drawLeds(mappings.normalized, $ledData);
+
+        Top.ui.label(`Top [normalizedFlat:${mappings.normalizedFlat.length}]`, 5, 5, { fill: 'white' });
+        Top.drawLeds(mappings.normalizedFlat, $ledData);
+    }
+
     /**
      * Try to actually send the state of all the LEDs to the server,
      * which will pass them along to a connected microcontroller.
      */
     $state.trySendToMicrocontroller($ledData);
-}, 1000 / 20);
+}
+
+/**
+ * Example animation loop function. Called approximately at the update rate.
+ * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
+ * @param {number} dtMs Number of milliseconds elapsed since last frame
+ * @param {Spaces} spaces 
+ * @param {Mappings} mappings 
+ */
+function exampleAnim1(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mappings) {
+    const $ledData = $state.ledData;
+    const points = mappings.normalized;
+    const x = sin(elapsedMs * 0.0007);
+
+    Front.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+    Perspective.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+    Top.line([x, 0, 1], [x, 0, -1], { color: 'yellow', thickness: 6 });
+    for (let i = 0; i < points.length; i++) {
+        let pt = points[i];
+        let di = abs(x - pt[0]);
+        const threshold = 0.5;
+        if (di < threshold) {
+            $ledData[i * 3 + 0] = 255 * clamp01(ilerp(threshold, 0, di));
+        } else {
+            $ledData[i * 3 + 0] = 0;
+        }
+    }
+}
+
+/**
+ * Example animation loop function. Called approximately at the update rate.
+ * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
+ * @param {number} dtMs Number of milliseconds elapsed since last frame
+ * @param {Spaces} spaces 
+ * @param {Mappings} mappings 
+ */
+function exampleAnim2(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mappings) {
+    const $ledData = $state.ledData;
+    const points = mappings.normalized;
+
+    const sphere2Loc = [0, 0, 0];
+    let rot = [cos(elapsedMs * 0.001) + sphere2Loc[0], sin(elapsedMs * 0.001) + sphere2Loc[1], 0 + sphere2Loc[2]];
+    Perspective.line(sphere2Loc, rot, { color: 'blue' });
+    Front.line(sphere2Loc, rot, { color: 'blue' });
+    Top.line(sphere2Loc, rot, { color: 'blue' });
+
+    for (let i = 0; i < points.length; i++) {
+        let pt = points[i];
+        let di2 = pt.distTo(rot);
+        const threshold = 0.6;
+        if (di2 < threshold) {
+            $ledData[i * 3 + 0] += 255 * clamp01(ilerp(threshold, 0, di2));
+            $ledData[i * 3 + 1] += 0;
+            $ledData[i * 3 + 2] += 255 * clamp01(ilerp(threshold, 0, di2));
+        }
+    }
+}
+
+/**
+ * Example animation loop function. Called approximately at the update rate.
+ * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
+ * @param {number} dtMs Number of milliseconds elapsed since last frame
+ * @param {Spaces} spaces 
+ * @param {Mappings} mappings 
+ */
+function exampleAnim3(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mappings) {
+    const $ledData = $state.ledData;
+    const points = mappings.normalized;
+    const curvePoints = mappings.normalizedCurve;
+
+    Perspective.polyline(curvePoints, { stroke: 'green' });
+    Front.polyline(curvePoints, { stroke: 'green' });
+    const rad1 = linMap(-1, 1, 0.1, 0.6, sin(elapsedMs * 0.0007)) * 0.9;
+    const rad2 = linMap(-1, 1, 0.7, 0.2, sin(elapsedMs * 0.0009)) * 0.8;
+    const evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
+
+    const sphere1Loc = interpBetweenPoints(curvePoints, evalCurve);
+    const sphere2Loc = [0.8, 0.8, 0];
+
+    Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
+    Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
+    Top.sphere(sphere1Loc, rad1, { stroke: 'red' });
+
+    Front.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+    Perspective.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+    Top.sphere(sphere2Loc, rad2, { stroke: 'blue' });
+
+    for (let i = 0; i < points.length; i++) {
+        let pt = points[i];
+        let di1 = pt.distTo(sphere1Loc);
+        let di2 = pt.distTo(sphere2Loc);
+        if (di1 < rad1) {
+            $ledData[i * 3 + 0] += 252;
+            $ledData[i * 3 + 1] += 186;
+            $ledData[i * 3 + 2] += 3;
+        }
+        if (di2 < rad2) {
+            $ledData[i * 3 + 0] += 3;
+            $ledData[i * 3 + 1] += 240;
+            $ledData[i * 3 + 2] += 252;
+        }
+    }
+}
