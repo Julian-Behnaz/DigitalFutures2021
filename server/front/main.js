@@ -105,6 +105,13 @@ const floor = Math.floor;
 const ceil = Math.ceil;
 
 /**
+ * Returns the integer version of value by chopping off the decimal portion.
+ * @param {number} value
+ * @returns {number}
+ */
+const trunc = Math.trunc;
+
+/**
  * Linearly interpolates between `a` and `b` via `t`.
  * Returns `a` if `t` is 0.
  * Returns `b` if `t` is 1.
@@ -1700,16 +1707,25 @@ class Space {
     }
 
     /**
-     * Draw leds as spheres at the given positions using the values as the colors.
+     * Draw leds as spheres at the given positions using the values to drive the colors.
+     * Note that we don't output the exact same color as is in the array; we try to account
+     * for the fact that real LEDs have a non-linear response curve.
      * 
      * @param {iVector3[]} positions - Positions of each LED
      * @param {Uint8ClampedArray} values - Each 3 values correspond to the R,G,B values of one LED. `values.length` must equal `3*positions.length`.
      * @param {number} [radii] - Radius of each LED
+     * @param {number} [intensityScale] - We raise the color to the power of the intensity scale in order to get more vibrant browser visuals
      * @returns {void}
      */
-    drawLeds(positions, values, radii = 0.01) {
+    drawLeds(positions, values, radii = 0.01, intensityScale = 1.2) {
         for (let i = 0; i < positions.length; i++) {
-            const color = 0xFF | values[i * 3 + 2] << 8 | values[i * 3 + 1] << 16 | values[i * 3 + 0] << 24;
+            let r = clamp(0, 255, Math.pow(values[i * 3 + 0], intensityScale)) | 0;
+            let g = clamp(0, 255, Math.pow(values[i * 3 + 1], intensityScale)) | 0;
+            let b = clamp(0, 255, Math.pow(values[i * 3 + 2], intensityScale)) | 0;
+            r = r << 24;
+            g = g << 16;
+            b = b << 8;
+            const color = r | g | b | 0xFF;
             this.sphere(positions[i], radii, { fill: color, stroke: null });
         }
     }
@@ -2253,7 +2269,10 @@ class UserInterface {
         }
         this.rect(x + 2 + labelDims[0], y, width, height, { fill: this.COLOR_IDLE });
         this.rect(x + 2 + labelDims[0], y, ilerp(lo, hi, curr) * width, height, { fill });
-        return clamp(lo, hi, newValue);
+
+        newValue = clamp(lo, hi, newValue);
+        space.text(`${newValue.toFixed(2)}`, fontSize, [x + 4 + labelDims[0] + width, y, 0], { fill: this.COLOR_TEXT_IDLE });
+        return newValue;
     }
 
     /**
@@ -2375,6 +2394,25 @@ function mapPointsToScaledPoints(dataPoints, scaleFactor) {
 }
 
 /**
+ * Given some data points, returns a new `Vector3` array
+ * containing corresponding points translated by the
+ * `translation` vector.
+ * 
+ * @param {iVector3[]} dataPoints
+ * @param {iVector3} translation
+ * @returns {Vector3[]}
+ */
+function mapPointsToTranslatedPoints(dataPoints, translation) {
+    const translatedPoints = [];
+    for (let i = 0; i < dataPoints.length; i++) {
+        const pt = dataPoints[i];
+        const scaledPt = Vector3.add(pt, translation);
+        translatedPoints.push(scaledPt);
+    }
+    return translatedPoints;
+}
+
+/**
  * Given some data points that are of the form [x,y,z], 
  * returns a new array of Vector3s with corresponding values.
  * @param {iVector3[]} dataPoints
@@ -2397,10 +2435,18 @@ function mapPointsToVector3s(dataPoints) {
  * @returns {Vector3}
  */
 function interpBetweenPoints(points, t, out) {
-    const rawIdx = lerp(0, points.length - 1, clamp01(t));
-    const startIdx = floor(rawIdx);
-    const endIdx = ceil(rawIdx);
-    return Vector3.lerp(points[startIdx], points[endIdx], ilerp(startIdx, endIdx, rawIdx), out);
+    if (out === undefined) {
+        out = Vector3.zero();
+    }
+    if (points.length > 0) {
+        const rawIdx = lerp(0, points.length - 1, clamp01(t));
+        const startIdx = floor(rawIdx);
+        const endIdx = ceil(rawIdx);
+        return Vector3.lerp(points[startIdx], points[endIdx], ilerp(startIdx, endIdx, rawIdx), out);
+    }
+    // If there are no points, we can't really do anything; return the zero vector.
+    out.setValues(0, 0, 0)
+    return out;
 }
 
 class Spaces {
@@ -2862,29 +2908,38 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
     // const ledIndex = Math.floor(linMap(-1, 1, 0, $ledData.length / 3, sin(elapsedMs * 0.0001)));
 
     // $saved.sliderState = GUI.ui.slider('linePos', 20, 20, -1, 1, $saved.sliderState);
-    const x = sin(elapsedMs * 0.001);
-    const points = mappings.normalizedFlat;
-    Top.line([x, -1, 0], [x, 1, 0], { color: 'yellow' });
-    // for (let i = 0; i < $ledData.length / 3; i++) {
-    //     if (x - ilerp(0, $ledData.length / 3, i) > 0.1) {
-    //         $ledData[i * 3 + 0] = 255;
-    //     }
+    // const x = sin(elapsedMs * 0.001);
+    // const points = mappings.normalizedFlat;
+    // Top.line([x, -1, 0], [x, 1, 0], { color: 'yellow' });
+    // // for (let i = 0; i < $ledData.length / 3; i++) {
+    // //     if (x - ilerp(0, $ledData.length / 3, i) > 0.1) {
+    // //         $ledData[i * 3 + 0] = 255;
+    // //     }
+    // // }
+    // for (let i = 0; i < points.length; i++) {
+    //     const pt = points[i];
+    //     const dist = abs(pt[0] - x);
+    //     // $ledData[i * 3 + 0] = 255;
+    //     // if (abs(pt[0] - x) < 0.1) {
+    //     // }
+    //     // Top.sphere(points[i], dist * 0.1);
+    //     $ledData[i * 3 + 0] = (1 - dist * 1.9) * 255;
     // }
-    for (let i = 0; i < points.length; i++) {
-        const pt = points[i];
-        const dist = abs(pt[0] - x);
-        // $ledData[i * 3 + 0] = 255;
-        // if (abs(pt[0] - x) < 0.1) {
-        // }
-        // Top.sphere(points[i], dist * 0.1);
-        $ledData[i * 3 + 0] = (1 - dist * 1.9) * 255;
-    }
     // for (let i = 0; i < $ledData.length / 3; i++) {
     //     if (i < ledIndex + 10) {
     //         $ledData[ledIndex * 3 + 0] = 255;
     //         $ledData[ledIndex * 3 + 1] = 255;
     //     }
     // }
+    $saved.sliderState = GUI.ui.slider('led', 20, 20, 0, 101, $saved.sliderState);
+    const x = $saved.sliderState;
+    // text(`)
+    GUI.ui.label(`${x | 0}`, 20, 30)
+    // $ledData.fill(0);
+    $ledData[(x | 0) * 3 + 0] = 255;
+
+    // $ledData[101 * 3 + 1] = 255;
+    // $ledData[102 * 3 + 2] = 255;
 
 
 
@@ -3084,7 +3139,7 @@ function exampleAnim2(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
     for (let i = 0; i < points.length; i++) {
         let pt = points[i];
         let di2 = pt.distTo(rot);
-        const threshold = 0.6;
+        const threshold = 0.9;
         if (di2 < threshold) {
             $ledData[i * 3 + 0] += 255 * clamp01(ilerp(threshold, 0, di2));
             $ledData[i * 3 + 1] += 0;
@@ -3127,14 +3182,16 @@ function exampleAnim3(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
         let di1 = pt.distTo(sphere1Loc);
         let di2 = pt.distTo(sphere2Loc);
         if (di1 < rad1) {
-            $ledData[i * 3 + 0] += 252;
-            $ledData[i * 3 + 1] += 186;
-            $ledData[i * 3 + 2] += 3;
+            const scale = clamp01(ilerp(rad1, 0, di1));
+            $ledData[i * 3 + 0] += (252 * scale) | 0;
+            $ledData[i * 3 + 1] += (186 * scale) | 0;
+            $ledData[i * 3 + 2] += (3 * scale) | 0;
         }
         if (di2 < rad2) {
-            $ledData[i * 3 + 0] += 3;
-            $ledData[i * 3 + 1] += 240;
-            $ledData[i * 3 + 2] += 252;
+            const scale = clamp01(ilerp(rad2, 0, di1));
+            $ledData[i * 3 + 0] += (3 * scale) | 0;
+            $ledData[i * 3 + 1] += (240 * scale) | 0;
+            $ledData[i * 3 + 2] += (252 * scale) | 0;
         }
     }
 }
