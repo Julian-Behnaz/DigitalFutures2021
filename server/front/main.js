@@ -90,6 +90,13 @@ const min = Math.min;
  */
 const max = Math.max;
 
+/** 
+ * Returns the sign of the `value`, indicating whether `value` is positive, negative or zero.
+ * @param {number} value
+ * @returns {number} -1, 1, or 0
+ */
+const sign = Math.sign;
+
 /**
  * Returns the greatest integer less than or equal to `value`.
  * @param {number} value
@@ -140,6 +147,8 @@ function ilerp(a, b, v) {
     return (v - a) / (b - a);
 }
 
+
+
 /**
  * Linearly maps an `inValue` into a new coordinate space.
  * If `inValue` is `inStart`, returns `outStart`.
@@ -153,6 +162,22 @@ function ilerp(a, b, v) {
  */
 function linMap(inStart, inEnd, outStart, outEnd, inValue) {
     return lerp(outStart, outEnd, ilerp(inStart, inEnd, inValue));
+}
+
+
+/**
+ * "Moves" `current` towards `target` by a maximum step of `maxDelta`
+ * without overshooting. Returns the result.
+ * @param {number} current
+ * @param {number} target
+ * @param {number} maxDelta
+ * @returns {number}
+ */
+function moveTowards(current, target, maxDelta) {
+    if (abs(target - current) <= maxDelta) {
+        return target;
+    }
+    return current + sign(target - current) * maxDelta;
 }
 
 /**
@@ -542,6 +567,33 @@ class Vector3 extends Array {
      */
     static ilerp(a, b, vector) {
         return (vector[0] - a[0]) * (b[0] - a[0]) + (vector[1] - a[1]) * (b[1] - a[1]) + (vector[2] - a[2]) * (b[2] - a[2]);
+    }
+
+
+
+    /**
+     * Returns a vector that is in the direction of target from current.
+     * The vector will be at most `maxDistanceDelta` away from `current`.
+     * Returns a vector with the values of `target` if the distance between
+     * `current` and `target` is less than `current`.
+     * If `out` is provided, modifies it rather than returning a new vector.
+     * @param {iVector3} current
+     * @param {iVector3} target
+     * @param {number} maxDistanceDelta
+     * @param {Vector3} [out]
+     * @returns {Vector3}
+     */
+    static moveTowards(current, target, maxDistanceDelta, out) {
+        if (out === undefined) {
+            out = Vector3.zero();
+        }
+        const deltaVector = Vector3.subtract(target, current, out);
+        const magnitude = deltaVector.getMagnitude();
+        if (magnitude <= maxDistanceDelta || magnitude === 0) {
+            return Vector3.copy(target, out);
+        }
+        Vector3.scaled(deltaVector, 1 / magnitude * maxDistanceDelta, deltaVector);
+        return Vector3.add(current, deltaVector, out);
     }
 
     /**
