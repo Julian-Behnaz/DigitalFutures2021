@@ -34,31 +34,31 @@ function isDesiredPortInfo(portInfo) {
  * @param {Buffer} buffer 
  */
 function forwardBufferToDevice(device, buffer) {
-    // Byte sequence the microcontroller expects to begin every message.
-    // Used to reduce chance of desynchronization.
-    // device.write(buffer);
-
     // We use 0xFF to indicate the start of a frame
     device.write([0xFF]);
     for (let i = 0; i < buffer.length; i++) {
         // If we see 0xFF in the regular buffer, use 0xFE instead.
         // This will guarantee that 0xFF will only be used to indicate message starts
+        // at the cost of slightly reducing the total range of outputs;
+        // you can't set an LED to full brightness.
         buffer[i] = buffer[i] === 0xFF ? 0xFE : buffer[i];
     }
     device.write(buffer);
-    device.drain();
-
 
     // Example message. Might be useful for debugging color channel ordering.
     // device.write([
-    //     0xFF, 0xFE, 0xFD,
-    //     0xFF, 0x00, 0x00, // R
-    //     0x00, 0xFF, 0x00, // B
-    //     0x00, 0x00, 0xFF, // G
-    //     0xFF, 0xFF, 0xFF, // White
-    //     0xFF, 0xFF, 0xFF, // White
+    //     0xFF,
+    //     0xFE, 0x00, 0x00, // R
+    //     0x00, 0xFE, 0x00, // B
+    //     0x00, 0x00, 0xFE, // G
+    //     0xFE, 0xFE, 0xFE, // White
+    //     0xFE, 0xFE, 0xFE, // White
     // ]);
+
+    // For debugging what is sent in the buffer:
     // console.log(buffer);
+
+    device.drain();
 }
 
 /**
@@ -246,10 +246,10 @@ function areStatesApproxEqual(a, b) {
  */
 function reportDeviceStateIfChanged() {
     if (!areStatesApproxEqual(prevDeviceState, currDeviceState)) {
-        console.log('🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌');
+        console.log('~~~~~~~~~~~~~~~~~~~');
         console.log('deviceState:');
         console.log(currDeviceState);
-        console.log('🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌🔌');
+        console.log('~~~~~~~~~~~~~~~~~~~');
         prevDeviceState = currDeviceState;
 
         if (websockets.status) {
@@ -345,7 +345,7 @@ async function scanForDevices(intervalMs) {
                         const parser = connectedDevice.pipe(new Delimiter({ delimiter: '\n' }));
                         parser.setEncoding('utf8');
                         parser.on('data', (read) => {
-                            logDevice('💬', read);
+                            logDevice('says', read);
                         });
 
                         // Device opened sucessfully
@@ -487,10 +487,10 @@ function logServer(action, ...msg) {
 
 server.listen(BROWSER_PORT);
 console.log(`
-👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
+ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️
 
 Open a browser to http://localhost:${BROWSER_PORT}/ to connect to the server ...
 
-👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆👆
+ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️ ⬆️
 `);
 scanForDevices(1000);

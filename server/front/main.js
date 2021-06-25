@@ -1769,11 +1769,11 @@ class Space {
      * @param {number} [intensityScale] - We raise the color to the power of the intensity scale in order to get more vibrant browser visuals
      * @returns {void}
      */
-    drawLeds(positions, values, radii = 0.01, intensityScale = 1.2) {
+    drawLeds(positions, values, radii = 0.01, intensityScale = 5.5) {
         for (let i = 0; i < positions.length; i++) {
-            let r = clamp(0, 255, Math.pow(values[i * 3 + 0], intensityScale)) | 0;
-            let g = clamp(0, 255, Math.pow(values[i * 3 + 1], intensityScale)) | 0;
-            let b = clamp(0, 255, Math.pow(values[i * 3 + 2], intensityScale)) | 0;
+            let r = (255 * clamp01(Math.pow(values[i * 3 + 0] / 255, 1 / intensityScale))) | 0;
+            let g = (255 * clamp01(Math.pow(values[i * 3 + 1] / 255, 1 / intensityScale))) | 0;
+            let b = (255 * clamp01(Math.pow(values[i * 3 + 2] / 255, 1 / intensityScale))) | 0;
             r = r << 24;
             g = g << 16;
             b = b << 8;
@@ -2756,6 +2756,7 @@ class Mappings {
                 this.readMapping('mappingPersp.json'),
                 this.readMapping('mappingFlat.json'),
                 this.readMapping('mappingCurve.json'),
+
             ]
         ).then(([persp, flat, curve]) => {
             const numberOfLEDs = persp.length;
@@ -2909,8 +2910,11 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
 
     { // Status UI
         let uiY = GUI.ui.bottom() + 2;
-        GUI.ui.label(`Device Status: ${$state.deviceState.status}`, 2, uiY);
-        GUI.ui.label(`Connected to Server: ${$state.statusWs.readyState === WebSocket.OPEN}`, 2, uiY += 5);
+        const isConnectedToServer = $state.statusWs.readyState === WebSocket.OPEN;
+        if (isConnectedToServer) {
+            GUI.ui.label(`Device Status: ${$state.deviceState.status}`, 2, uiY);
+        }
+        GUI.ui.label(`Connected to Server: ${isConnectedToServer}`, 2, uiY += 5);
     }
 
     { // Draw some perspective helper UI
@@ -2942,189 +2946,12 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
         if ($saved.animState == 2) {
             exampleAnim3(elapsedMs, dtMs, spaces, mappings);
         }
+    } else {
+        $saved.sliderState = GUI.ui.slider('led', 20, 20, 0, 101, $saved.sliderState);
+        const x = $saved.sliderState;
+        GUI.ui.label(`${x | 0}`, 20, 30)
+        $ledData[(x | 0) * 3 + 0] = 255;
     }
-
-    // 0 1 2  3 4 5  6 7 8  9 10 11
-    // R G B  R G B  R G B  R  G  B 
-    //   0      1      2       3
-
-    // for (let i = 0; i < $ledData.length; i++) {
-    //     $ledData[i] = 200;
-    // }
-
-
-    // const ledIndex2 = Math.floor(linMap(-1, 1, 0, $ledData.length / 3, cos(elapsedMs * 0.001)));
-    // $ledData[ledIndex * 3 + 0] = 255;
-    // $ledData[ledIndex2 * 3 + 0] = 255;
-    // linMap(-1, 1, 0, 255, sin(elapsedMs * 0.001));
-    // const ledIndex = Math.floor(linMap(-1, 1, 0, $ledData.length / 3, sin(elapsedMs * 0.0001)));
-
-    // $saved.sliderState = GUI.ui.slider('linePos', 20, 20, -1, 1, $saved.sliderState);
-    // const x = sin(elapsedMs * 0.001);
-    // const points = mappings.normalizedFlat;
-    // Top.line([x, -1, 0], [x, 1, 0], { color: 'yellow' });
-    // // for (let i = 0; i < $ledData.length / 3; i++) {
-    // //     if (x - ilerp(0, $ledData.length / 3, i) > 0.1) {
-    // //         $ledData[i * 3 + 0] = 255;
-    // //     }
-    // // }
-    // for (let i = 0; i < points.length; i++) {
-    //     const pt = points[i];
-    //     const dist = abs(pt[0] - x);
-    //     // $ledData[i * 3 + 0] = 255;
-    //     // if (abs(pt[0] - x) < 0.1) {
-    //     // }
-    //     // Top.sphere(points[i], dist * 0.1);
-    //     $ledData[i * 3 + 0] = (1 - dist * 1.9) * 255;
-    // }
-    // for (let i = 0; i < $ledData.length / 3; i++) {
-    //     if (i < ledIndex + 10) {
-    //         $ledData[ledIndex * 3 + 0] = 255;
-    //         $ledData[ledIndex * 3 + 1] = 255;
-    //     }
-    // }
-    $saved.sliderState = GUI.ui.slider('led', 20, 20, 0, 101, $saved.sliderState);
-    const x = $saved.sliderState;
-    // text(`)
-    GUI.ui.label(`${x | 0}`, 20, 30)
-    // $ledData.fill(0);
-    $ledData[(x | 0) * 3 + 0] = 255;
-
-    // $ledData[101 * 3 + 1] = 255;
-    // $ledData[102 * 3 + 2] = 255;
-
-
-
-    // $ledData[20 * 3 + 2] = 255;
-
-    // Perspective.sphere(Perspective.getMousePosition(), 0.01, { fill: Perspective.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-    // Top.sphere(Top.getMousePosition(), 0.01, { fill: Top.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-    // Front.sphere(Front.getMousePosition(), 0.01, { fill: Front.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-    // GUI.sphere(GUI.getMousePosition(), 0.01, { fill: GUI.isMouseWithinSpace() ? 'green' : 'white', stroke: null });
-
-
-
-    // Some other buttons for drawing objects
-    // if ($saved.cir.show = GUI.ui.checkbox('Circle', 5, uiY -= 5, $saved.cir.show)) {
-    //     $saved.cir.radius = GUI.ui.slider(`Rad`, 5, uiY -= 5, 0, 1, $saved.cir.radius);
-    //     Perspective.sphere([0, 0, 0], $saved.cir.radius);
-    // }
-    // GUI.ui.circleButton('My Circle Bttn', 50, 60);
-
-
-    // GUI.ui.space.sphere(GUI.ui.mousePosition, 5, { fill: 'red' });
-
-    // const pixelsToNorm = 1 / ctx.canvas.clientHeight;
-    // const bottom = -1;
-    // const top = 1;
-    // const left = -1;
-    // const right = 1;
-
-    // strokeWeight(2 * pixelsToNorm);
-
-    // // Background
-    // clear('#ff00ffff');
-
-    // fill('#000000ff');
-    // if (dataWs.readyState === WebSocket.OPEN) {
-    //     text(`Connected to Server`, -1, 0.9);
-    // } else {
-    //     text(`Not Connected to Server`, -1, 0.9);
-    // }
-
-    // // Origin Crosshairs
-    // stroke('#ffffffff');
-    // line(left, 0, right, 0);
-    // line(0, bottom, 0, top);
-
-    // noStroke();
-
-    // const normMapping = mappings.normalized;
-
-    // state.lineX += 0.01;
-    // if (state.lineX > 1) {
-    //     state.lineX = -1;
-    // }
-    // let lineXNorm = state.lineX;
-
-    // for (let i = 0; i < normMapping.length; i++) {
-    //     const pt = normMapping[i];
-
-    //     // let x = (elapsedMs % 5000) / 5000 * right;
-
-    //     // let di = dist(lineXNorm, 0, pt[0], pt[1]);
-    //     // console.log(di);
-    //     // line(x, 0, canvasPt[0], canvasPt[1]);
-    //     // if (di < 0.5) {
-    //     //     $ledData[i * 3 + 0] = 255;
-    //     // } else {
-    //     //     $ledData[i * 3 + 0] = 0;
-    //     // }
-
-    //     if (state.animState == 0) {
-    //         line(lineXNorm, bottom, lineXNorm, top);
-    //         let distToVerticalLine = Math.abs(pt[0] - lineXNorm);
-    //         if (distToVerticalLine < 0.3) {
-    //             //red
-    //             $ledData[i * 3 + 0] = 255;
-    //         } else {
-    //             $ledData[i * 3 + 0] = 0;
-    //         }
-    //     }
-
-    //     if (state.animState == 1) {
-    //         strokeWeight(4 * pixelsToNorm);
-    //         stroke('#ffffffff');
-    //         noFill();
-    //         let dia = (Math.sin(elapsedMs * 0.001) + 1) * 0.5;
-    //         ellipse(0, 0, dia, dia);
-    //         if (length(pt[0], pt[1]) < dia) {
-    //             $ledData[i * 3 + 0] = 255;
-    //         } else {
-    //             $ledData[i * 3 + 0] = 0;
-    //         }
-    //     }
-
-
-    //     if (state.animState == 2) {
-    //         strokeWeight(4 * pixelsToNorm);
-    //         stroke('#ffffffff');
-    //         noFill();
-    //         line(0, 0, Math.sin(elapsedMs * 0.001), Math.cos(elapsedMs * 0.001));
-    //         let dist = shortestDistance(pt[0], pt[1], 0, 0, (Math.sin(elapsedMs * 0.001) - 0) / 2, (Math.cos(elapsedMs * 0.001) - 0) / 2);
-    //         if (dist < 0.4) {
-    //             $ledData[i * 3 + 0] = 255;
-    //         } else {
-    //             $ledData[i * 3 + 0] = 0;
-    //         }
-    //     }
-
-
-    //     //green and blue
-    //     $ledData[i * 3 + 1] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
-    //     $ledData[i * 3 + 2] = 0;//((Math.sin(elapsedMs * 0.001) + 1) * 0.5 * 255) | 0;
-    // }
-
-    // noStroke();
-    // for (let i = 0; i < normMapping.length; i++) {
-    //     const pt = normMapping[i];
-
-    //     // Calculate the color of the current pixel:
-    //     const color = 0xFF | $ledData[i * 3 + 2] << 8 | $ledData[i * 3 + 1] << 16 | $ledData[i * 3 + 0] << 24;
-    //     fill(color);
-    //     circle(pt[0], pt[1], 0.01);
-    // }
-
-    // if (UI.toggleButton('Anim 1', state.animState == 0, -1, 0.5)) {
-    //     state.animState = 0;
-    // }
-    // if (UI.toggleButton('Anim 2', state.animState == 1, -1, 0.4)) {
-    //     state.animState = 1;
-    // }
-    // if (UI.toggleButton('Anim 3', state.animState == 2, -1, 0.3)) {
-    //     state.animState = 2;
-    // }
-
 
     { // Actually display LEDs in different views (and label the views)
         Front.ui.label(`Front [normalized:${mappings.normalized.length}]`, 5, 5, { fill: 'white' });
@@ -3182,16 +3009,21 @@ function exampleAnim2(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
     const $ledData = $state.ledData;
     const points = mappings.normalized;
 
-    const sphere2Loc = [0, 0, 0];
-    let rot = [cos(elapsedMs * 0.001) + sphere2Loc[0], sin(elapsedMs * 0.001) + sphere2Loc[1], 0 + sphere2Loc[2]];
-    Perspective.line(sphere2Loc, rot, { color: 'blue' });
-    Front.line(sphere2Loc, rot, { color: 'blue' });
-    Top.line(sphere2Loc, rot, { color: 'blue' });
+    const lineOrigin = [0, 0, 0];
+    const lineAngle = (elapsedMs * 0.001) % TAU;
+    let lineTip = [
+        lineOrigin[0] + cos(lineAngle),
+        lineOrigin[1] + sin(lineAngle),
+        lineOrigin[2] + 0];
+    Perspective.line(lineOrigin, lineTip, { color: 'blue' });
+    Front.line(lineOrigin, lineTip, { color: 'blue' });
+
+    const threshold = TAU * 0.1;
 
     for (let i = 0; i < points.length; i++) {
-        let pt = points[i];
-        let di2 = pt.distTo(rot);
-        const threshold = 0.9;
+        const pt = points[i];
+        const ptAngleInXY = (atan2(pt[1], pt[0]) + TAU) % TAU;
+        const di2 = abs(ptAngleInXY - lineAngle);
         if (di2 < threshold) {
             $ledData[i * 3 + 0] += 255 * clamp01(ilerp(threshold, 0, di2));
             $ledData[i * 3 + 1] += 0;
@@ -3215,11 +3047,11 @@ function exampleAnim3(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
     Perspective.polyline(curvePoints, { stroke: 'green' });
     Front.polyline(curvePoints, { stroke: 'green' });
     const rad1 = linMap(-1, 1, 0.1, 0.6, sin(elapsedMs * 0.0007)) * 0.9;
-    const rad2 = linMap(-1, 1, 0.7, 0.2, sin(elapsedMs * 0.0009)) * 0.8;
+    const rad2 = 0.3;
     const evalCurve = linMap(-1, 1, 0, 1, sin(elapsedMs * 0.0009)) * 0.8;
 
     const sphere1Loc = interpBetweenPoints(curvePoints, evalCurve);
-    const sphere2Loc = [0.8, 0.8, 0];
+    const sphere2Loc = Front.getMousePosition();
 
     Front.sphere(sphere1Loc, rad1, { stroke: 'red' });
     Perspective.sphere(sphere1Loc, rad1, { stroke: 'red' });
@@ -3240,7 +3072,7 @@ function exampleAnim3(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
             $ledData[i * 3 + 2] += (3 * scale) | 0;
         }
         if (di2 < rad2) {
-            const scale = clamp01(ilerp(rad2, 0, di1));
+            const scale = clamp01(ilerp(rad2, 0, di2));
             $ledData[i * 3 + 0] += (3 * scale) | 0;
             $ledData[i * 3 + 1] += (240 * scale) | 0;
             $ledData[i * 3 + 2] += (252 * scale) | 0;
