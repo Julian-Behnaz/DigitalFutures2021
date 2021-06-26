@@ -2,6 +2,8 @@
 
 [Beyond the Grid: Interactive Installations with Wacky Topologies](https://www.digitalfutures.world/workshops/105.html)
 
+Drawings and diagrams could be found [here](https://miro.com/app/board/o9J_l9vyjsE=/)
+
 # Getting Started
 
 1. Make sure you have downloaded and installed the required software:

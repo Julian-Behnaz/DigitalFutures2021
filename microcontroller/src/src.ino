@@ -35,7 +35,7 @@ void setup()
      *   `g_dataBuffer + 2` would skip 2*3=6 bytes.
      * 👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇👇
      */
-    const int ledsInStrip0 = 120; // TODO(JULIAN+BEHNAZ): Add a diagram to explain what is going on!!!
+    const int ledsInStrip0 = 102; // TODO(JULIAN+BEHNAZ): Add a diagram to explain what is going on!!!
     int indexOffset = 0;
     FastLED.addLeds<WS2811, 10 /* PIN */, GRB>(g_dataBuffer + indexOffset, ledsInStrip0 /* #LEDs in this strip */);
     indexOffset += ledsInStrip0;
