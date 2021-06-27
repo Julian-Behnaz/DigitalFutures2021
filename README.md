@@ -58,7 +58,7 @@ The code we provide comes with several different folders. Here's an overview of 
         - `mappings` - a folder containing `.json` files with different LED position mappings. **You'll export files into this folder from Grasshopper and load them in `main.js`.**
         - `index.html` - the HTML file that imports `main.js`. You probably won't want to change it. It provides automatic error detection/recovery and reloads the browser when the server tells it that files have changed.
         - `main.js` - the main javascript file that runs in the browser. **You'll spend most of your time here**, writing animations. Note that the file is very long, but don't worry; you don't need to understand it all. There's a playground section at the bottom where you'll write your code. The rest of it provides a creative coding environment and defines functions you can use.
-    - `index.js` - the server code that talks to the web browser and microcontroller. You'll only need to change this **if it can't find your microcontroller** [see here]() or if you need to tweak something like the microcontroller baud rate.
+    - `index.js` - the server code that talks to the web browser and microcontroller. You'll only need to change this **if it can't find your microcontroller** [see here](https://github.com/Julian-Behnaz/DigitalFutures2021/blob/c1bb9afd0c4410749882add711df697addd4b4e1/server/server.js#L16-L28) or if you need to tweak something like the microcontroller baud rate.
 - `microcontroller`
     - `src`
         - `src.ino` - **The microcontroller code you need to tweak and upload to your Arduino.**
@@ -115,7 +115,7 @@ Sometimes things go wrong. Check these things:
 1. Have you configured and uploaded the microcontroller code (while the server **wasn't** running)?
 2. Is the server running? (`npm run start` in the `server` directory)
 3. Is the microcontroller physically connected to the computer?
-4. Has the server found and connected to the microcontroller? (see [this]() if it hasn't)
+4. Has the server found and connected to the microcontroller? (see [this](https://github.com/Julian-Behnaz/DigitalFutures2021/blob/c1bb9afd0c4410749882add711df697addd4b4e1/server/server.js#L16-L28) if it hasn't)
 5. Is the browser window open to the correct URL? (note that you have to refresh the browser window if you stop the server and restart it, and only one browser window can talk to the server at a time to avoid conflicts between messages intended for the microcontroller)
 6. Does the number of bytes sent from the server match the number of bytes the microcontroller is expecting? (if not, check to make sure that the browser is sending the server 3x the number of bytes as you have LEDs and that the microcontroller code is configured for the correct number of LEDs)
 7. (If animations are showing up on the strip(s) but the colors are wrong) Does the channel ordering specified in the microcontroller code match the requirements of your LED strip(s)? See if `RGB`, `RBG`, `GRB`, `GBR`, `BRG`, or `BGR` would be the correct ordering. Also check if you've specified the correct chipset for your LED strip. Consider running a FastLED example program.
