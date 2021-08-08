@@ -2,7 +2,10 @@
 
 [Beyond the Grid: Interactive Installations with Wacky Topologies](https://www.digitalfutures.world/workshops/105.html)
 
-Drawings and diagrams could be found [here](https://miro.com/app/board/o9J_l9vyjsE=/)
+Drawings and diagrams may be found [here](https://miro.com/app/board/o9J_l9vyjsE=/)
+
+# Workshop Outcomes (Video)
+[![Video](https://img.youtube.com/vi/EfWlIOijRms/0.jpg)](https://www.youtube.com/watch?v=EfWlIOijRms])
 
 # Getting Started
 
