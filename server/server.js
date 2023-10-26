@@ -19,7 +19,7 @@ const DEVICE_BAUD_RATE = 1000000;
  * on the microcontroller you're using, but once you've done that,
  * your code will work even if you plug your microcontroller into
  * a different port on your computer or run it on a different computer.
- * @param {PortInfo} portInfo 
+ * @param {PortInfo} portInfo
  * @returns {boolean}
  */
 function isDesiredPortInfo(portInfo) {
@@ -30,8 +30,8 @@ function isDesiredPortInfo(portInfo) {
 /**
  * Given a specific `device` and `buffer`, sends the buffer to the device,
  * along with any other bytes the device might need for things like synchronization.
- * @param {SerialPort} device 
- * @param {Buffer} buffer 
+ * @param {SerialPort} device
+ * @param {Buffer} buffer
  */
 function forwardBufferToDevice(device, buffer) {
     // We use 0xFF to indicate the start of a frame
@@ -79,8 +79,8 @@ const BROWSER_PORT = 8080;
 const fs = require('fs'),
     http = require('http');
 const WebSocket = require('ws');
-const SerialPort = require('serialport');
-const Delimiter = require('@serialport/parser-delimiter')
+const { SerialPort } = require('serialport');
+const { DelimiterParser } = require('@serialport/parser-delimiter')
 
 // See https://stackoverflow.com/questions/9781218/how-to-change-node-jss-console-font-color
 const ANSI_COLORS = {
@@ -143,20 +143,20 @@ const ANSI_COLORS = {
  * Information about a device. Can be used to auto-connect to it even when plugged in to a different port or computer.
  * @typedef {object} PortInfo
  * @property {string} path - Path or identifier used to open the device. Typically something like tty/* on Mac/Linux and COM* on windows
- * @property {string} [vendorId] - Example: `'2341'`. Identifier for the group that made the device. Somewhat consistent between platforms.
- * @property {string} [productId] - Example: `'0043'`. Identifier for the specific product model. Somewhat consistent between platforms.
- * @property {string} [serialNumber] - Example: `'752303138333518011C1'`. Device Serial# only present for USB devices. Somewhat consistent between platforms.
- * @property {string} [manufacturer] - Example: `'Arduino (www.arduino.cc)'`. Who made the device. Often reported differently by different drivers.
- * @property {string} [locationId] - Example: `'14500000'` or `undefined` or `'Port_#0003.Hub_#0001'`. Where the device is plugged in. Not guaranteed to be the same or present on all systems.
- * @property {string} [pnpId] - Example: `'USB\\VID_2341&PID_0043\\752303138333518011C1'`. Plug and Play ID. Windows only?
+ * @property {string|undefined} [vendorId] - Example: `'2341'`. Identifier for the group that made the device. Somewhat consistent between platforms.
+ * @property {string|undefined} [productId] - Example: `'0043'`. Identifier for the specific product model. Somewhat consistent between platforms.
+ * @property {string|undefined} [serialNumber] - Example: `'752303138333518011C1'`. Device Serial# only present for USB devices. Somewhat consistent between platforms.
+ * @property {string|undefined} [manufacturer] - Example: `'Arduino (www.arduino.cc)'`. Who made the device. Often reported differently by different drivers.
+ * @property {string|undefined} [locationId] - Example: `'14500000'` or `undefined` or `'Port_#0003.Hub_#0001'`. Where the device is plugged in. Not guaranteed to be the same or present on all systems.
+ * @property {string|undefined} [pnpId] - Example: `'USB\\VID_2341&PID_0043\\752303138333518011C1'`. Plug and Play ID. Windows only?
  */
 
 
-/** 
+/**
  * If we are connected to a device, this will contain a reference
  * to the `SerialPort` we use to communicated with that device.
  * Otherwise it will contain `null`.
- * @type {?SerialPort}
+ * @type {SerialPort|null}
  */
 let connectedDevice = null;
 
@@ -173,8 +173,8 @@ let currDeviceState = {
 /**
  * This is the state we were in before the current state.
  * We use it to determine if our state has changed, so we
- * can send messages only if the state has changed. 
- * @type {?DeviceState}*/
+ * can send messages only if the state has changed.
+ * @type {DeviceState|null}*/
 let prevDeviceState = null;
 
 
@@ -193,7 +193,7 @@ const websockets = {
      * webapp will know what the server is doing (scanning, connected to a device, etc...).
      * @type {?WebSocket} */
     status: null,
-    /** 
+    /**
      * The server posts to this when a frontend file has been modified.
      * That allows the webapp to live reload when frontend code changes.
      * @type {?WebSocket}
@@ -204,8 +204,8 @@ const websockets = {
 /**
  * Returns true if the two passed device states, `a` and `b`, are sufficiently
  * equivalent that we don't need to report that something changed.
- * @param {DeviceState} a 
- * @param {DeviceState} b 
+ * @param {DeviceState|null} a
+ * @param {DeviceState|null} b
  * @returns {boolean}
  */
 function areStatesApproxEqual(a, b) {
@@ -213,11 +213,11 @@ function areStatesApproxEqual(a, b) {
         switch (a.status) {
             case 'Connected':
                 /** @type {DeviceState_Connected} */
-                const bConnected = (/** @type {DeviceState_Connected} */ b);
+                const bConnected = (/** @type {DeviceState_Connected} */ (b));
                 return a.details === bConnected.details;
             case 'Scanning':
                 /** @type {DeviceState_Scanning} */
-                const bScanning = (/** @type {DeviceState_Scanning} */ b);
+                const bScanning = (/** @type {DeviceState_Scanning} */ (b));
                 const aFound = a.found;
                 const bFound = bScanning.found;
                 if (a.found.length == bScanning.found.length) {
@@ -287,10 +287,10 @@ function setDeviceStateUnableToConnect(err) {
 /**
  * Sets `deviceState` to the Connected state.
  * Stores simple serializable info a
- * @param {string} path 
- * @param {?string} vendorId 
- * @param {?string} productId 
- * @param {?string} serialNumber 
+ * @param {string} path
+ * @param {string|undefined} vendorId
+ * @param {string|undefined} productId
+ * @param {string|undefined} serialNumber
  */
 function setDeviceStateConnected(path, vendorId, productId, serialNumber) {
     currDeviceState = {
@@ -308,7 +308,7 @@ function setDeviceStateConnected(path, vendorId, productId, serialNumber) {
 
 /**
  * Sleep for the specified number of milliseconds.
- * @param {number} ms 
+ * @param {number} ms
  * @returns {Promise<NodeJS.Timeout>}
  */
 async function sleep(ms) {
@@ -326,7 +326,7 @@ async function scanForDevices(intervalMs) {
     while (true) {
         if (currDeviceState.status === 'Scanning') {
             const deviceList = await SerialPort.list();
-            /** @type {?PortInfo} */
+            /** @type {PortInfo|null} */
             let info = null;
             for (let i = 0; i < deviceList.length; i++) {
                 if (isDesiredPortInfo(deviceList[i])) {
@@ -335,14 +335,14 @@ async function scanForDevices(intervalMs) {
                 }
             }
             if (info) {
-                connectedDevice = new SerialPort(info.path, { baudRate: DEVICE_BAUD_RATE }, (err) => {
+                connectedDevice = new SerialPort({ path: info.path, baudRate: DEVICE_BAUD_RATE }, (err) => {
                     if (err) {
                         // Something went wrong when opening the port!
                         setDeviceStateUnableToConnect(err);
                         setDeviceStateScanning(deviceList);
-                    } else {
+                    } else if (connectedDevice && info) {
                         connectedDevice.flush();
-                        const parser = connectedDevice.pipe(new Delimiter({ delimiter: '\n' }));
+                        const parser = connectedDevice.pipe(new DelimiterParser({ delimiter: '\n' }));
                         parser.setEncoding('utf8');
                         parser.on('data', (read) => {
                             logDevice('says', read);
@@ -370,32 +370,34 @@ async function scanForDevices(intervalMs) {
 
 /** Set up a file server to serve HTML pages, javascript, and JSON files. */
 const server = http.createServer(function (req, res) {
-    const uri = new URL(req.url, `http://localhost:${BROWSER_PORT}/`);
-    const pathname = uri.pathname === '/' ? '/index.html' : uri.pathname;
-    logServer('got request', pathname);
-    fs.readFile(`${__dirname}/front${pathname}`, function (err, data) {
-        if (err) {
-            res.writeHead(404);
-            res.end(JSON.stringify(err));
-            return;
-        }
-        /** @type {http.OutgoingHttpHeaders}  */
-        const headers = {};
-        if (pathname.endsWith('.js')) {
-            headers['Content-Type'] = 'text/javascript';
-        } else if (pathname.endsWith('.json')) {
-            headers['Content-Type'] = 'application/json';
-        }
-        res.writeHead(200, headers);
-        res.end(data);
-    });
+    if (req.url) {
+        const uri = new URL(req.url, `http://localhost:${BROWSER_PORT}/`);
+        const pathname = uri.pathname === '/' ? '/index.html' : uri.pathname;
+        logServer('got request', pathname);
+        fs.readFile(`${__dirname}/front${pathname}`, function (err, data) {
+            if (err) {
+                res.writeHead(404);
+                res.end(JSON.stringify(err));
+                return;
+            }
+            /** @type {http.OutgoingHttpHeaders}  */
+            const headers = {};
+            if (pathname.endsWith('.js')) {
+                headers['Content-Type'] = 'text/javascript';
+            } else if (pathname.endsWith('.json')) {
+                headers['Content-Type'] = 'application/json';
+            }
+            res.writeHead(200, headers);
+            res.end(data);
+        });
+    }
 });
 
 /** Websocket for forwarding data to connected microcontroller. */
 const dataServer = new WebSocket.Server({ noServer: true });
 dataServer.on('connection', function connection(ws) {
     ws.on('message', function incoming(message) {
-        if (currDeviceState.status === 'Connected') {
+        if (currDeviceState.status === 'Connected' && connectedDevice) {
             if (message instanceof Buffer) {
                 forwardBufferToDevice(connectedDevice, message);
             } else {
@@ -430,7 +432,7 @@ updateServer.on('connection', function connection(ws) {
     websockets.update = ws;
 });
 
-/** 
+/**
  * If we get a watch event, we set a brief timeout during which we
  * don't send update messages. Otherwise, we might trigger
  * many back-to-back reloads due to noisy watch events.
@@ -451,24 +453,28 @@ fs.watch('./front', { recursive: true }, (event, filename) => {
 });
 
 server.on('upgrade', function upgrade(request, socket, head) {
-    const uri = new URL(request.url, `http://localhost:${BROWSER_PORT}/`);
-    const pathname = uri.pathname;
-
-    /** Set up websockets on different routes for different purposes */
-    if (pathname === '/data') {
-        dataServer.handleUpgrade(request, socket, head, function done(ws) {
-            dataServer.emit('connection', ws, request);
-        });
-    } else if (pathname === '/status') {
-        statusServer.handleUpgrade(request, socket, head, function done(ws) {
-            statusServer.emit('connection', ws, request);
-        });
-    } else if (pathname === '/update') {
-        updateServer.handleUpgrade(request, socket, head, function done(ws) {
-            updateServer.emit('connection', ws, request);
-        });
-    } else {
+    if (!request.url) {
         socket.destroy();
+    } else {
+        const uri = new URL(request.url, `http://localhost:${BROWSER_PORT}/`);
+        const pathname = uri.pathname;
+
+        /** Set up websockets on different routes for different purposes */
+        if (pathname === '/data') {
+            dataServer.handleUpgrade(request, socket, head, function done(ws) {
+                dataServer.emit('connection', ws, request);
+            });
+        } else if (pathname === '/status') {
+            statusServer.handleUpgrade(request, socket, head, function done(ws) {
+                statusServer.emit('connection', ws, request);
+            });
+        } else if (pathname === '/update') {
+            updateServer.handleUpgrade(request, socket, head, function done(ws) {
+                updateServer.emit('connection', ws, request);
+            });
+        } else {
+            socket.destroy();
+        }
     }
 });
 

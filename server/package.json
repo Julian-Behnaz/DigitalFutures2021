@@ -21,7 +21,7 @@
   },
   "homepage": "https://github.com/Julian-Behnaz/DigitalFutures2021#readme",
   "dependencies": {
-    "serialport": "^9.0.7",
+    "serialport": "^12.0.0",
     "ws": "^7.4.6"
   }
 }
