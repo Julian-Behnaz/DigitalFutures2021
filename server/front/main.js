@@ -14,7 +14,7 @@
 * - making a simple UI for tweaking values
 * - automatically updating your browser window when a file changes
 * - saving values between updates/reloads so you don't lose your tweaks
-* 
+*
 *
 * If you haven't yet, make sure to
 * ```
@@ -36,7 +36,7 @@
 // Common Mathematical Functions and Constants
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/** 
+/**
  * Universal circle constant τ. Represents the number of radians in a full turn.
  */
 const TAU = Math.PI * 2;
@@ -59,7 +59,7 @@ const cos = Math.cos;
  * - the line segment from `<0,0>` to `<1,0>`
  * - and the line segment from `<0,0>` to `<x,y>`
  * The result will be between `-TAU/2` and `TAU/2`.
- * 
+ *
  * Be careful! The first parameter is `y` and not `x`!
  * @param {number} y
  * @param {number} x
@@ -90,7 +90,7 @@ const min = Math.min;
  */
 const max = Math.max;
 
-/** 
+/**
  * Returns the sign of the `value`, indicating whether `value` is positive, negative or zero.
  * @param {number} value
  * @returns {number} -1, 1, or 0
@@ -226,13 +226,13 @@ function copySign(value, signSource) {
 /**
  * A Vector class with helper methods for adding, subtracting, scaling, lerping,
  * and otherwise manipulating 3D vectors.
- * 
+ *
  * A Vector has a direction and a magnitude, but no position.
  * You can use vectors to represent positions if you consider the vector as describing
  * a translation from the origin at `<0,0,0>` to a point.
  */
 class Vector3 extends Array {
-    /** 
+    /**
      * @private
      * @param {number} x
      * @param {number} y
@@ -247,8 +247,8 @@ class Vector3 extends Array {
 
     /**
      * Returns the distance between two vectors
-     * @param {iVector3} a 
-     * @param {iVector3} b 
+     * @param {iVector3} a
+     * @param {iVector3} b
      * @returns {number}
      */
     static distance(a, b) {
@@ -266,13 +266,13 @@ class Vector3 extends Array {
 
     /**
      * Creates and returns a 3d vector filled with the passed parameters.
-     * 
+     *
      * ```
      * |x|
      * |y|
      * |z|
      * ```
-     * 
+     *
      * @param {number} x - X coordinate of the new vector
      * @param {number} y - Y coordinate of the new vector
      * @param {number} z - Z coordinate of the new vector
@@ -314,9 +314,9 @@ class Vector3 extends Array {
 
     /**
      * Sets the vector to have the given x,y,z values.
-     * @param {number} x 
-     * @param {number} y 
-     * @param {number} z 
+     * @param {number} x
+     * @param {number} y
+     * @param {number} z
      */
     setValues(x, y, z) {
         this[0] = x;
@@ -326,13 +326,13 @@ class Vector3 extends Array {
 
     /**
      * Create and returns a 3d zero vector:
-     * 
+     *
      * ```
      * |0|
      * |0|
      * |0|
      * ```
-     * 
+     *
      * @returns {Vector3} - A new zero vector
      */
     static zero() {
@@ -342,9 +342,9 @@ class Vector3 extends Array {
     /**
      * Returns the result of adding the components of
      * the vectors `a` and `b`. If `out` is provided,
-     * modifies it instead of creating a new vector. 
-     * @param {iVector3} a 
-     * @param {iVector3} b 
+     * modifies it instead of creating a new vector.
+     * @param {iVector3} a
+     * @param {iVector3} b
      * @param {Vector3} [out] - [OPTIONAL] modified if provided
      * @return {Vector3}
      */
@@ -369,10 +369,10 @@ class Vector3 extends Array {
 
     /**
      * Returns the result of adding the components of
-     * the vector `b` from the corresponding components of `a`. 
+     * the vector `b` from the corresponding components of `a`.
      * If `out` is provided, modifies it instead of creating a new vector.
-     * @param {iVector3} a 
-     * @param {iVector3} b 
+     * @param {iVector3} a
+     * @param {iVector3} b
      * @param {Vector3} [out] - [OPTIONAL] modified if provided
      */
     static subtract(a, b, out) {
@@ -397,8 +397,8 @@ class Vector3 extends Array {
     /**
      * Returns the vector formed by scaling `a` by `multiplier`.
      * If `out` is provided, modifies it instead of creating a new vector.
-     * @param {iVector3} a 
-     * @param {number} multiplier 
+     * @param {iVector3} a
+     * @param {number} multiplier
      * @param {Vector3} [out] - [OPTIONAL] modified if provided
      */
     static scaled(a, multiplier, out) {
@@ -422,11 +422,11 @@ class Vector3 extends Array {
 
     /**
      * Normalizes `vector` without modifying it.
-     * Returns a vector with the resulting normalized vector, which will 
+     * Returns a vector with the resulting normalized vector, which will
      * have a magnitude of `1` and point in the same direction as `vector`.
      * If `out` is provided, modifies it rather than creating a new
      * vector.
-     * 
+     *
      * If `vector` is the zero vector, returns the zero vector
      * instead of normalizing.
      * @param {iVector3} vector
@@ -452,10 +452,10 @@ class Vector3 extends Array {
      * Returns a normalized copy of `this` vector.
      * The returned vector will have a magnitude of 1
      * and point in the same direction as `this`.
-     * 
+     *
      * If `this` is the zero vector, returns a zero vector
      * instead of normalizing.
-     * @returns {Vector3}  
+     * @returns {Vector3}
      */
     normalized() {
         return Vector3.normalize(this);
@@ -627,23 +627,23 @@ Vector3.__temp = Vector3.zero();
 /**
  * A Matrix class with helper methods for multiplying, adding, subtracting, rotating,
  * and otherwise manipulating 4x4 matrices.
- * 
+ *
  * *You likely won't need to use this class directly.*
- * 
+ *
  * This framework is primarily concerned with "homogenous" 4x4 matrices, which
  * we can use to translate, rotate, and scale vectors and other matrices.
  * Such a matrix has this form, where `I`, `J`, and `K` define the orthogonal basis vectors
  * of a space, which allow you to represent rotation and scale, and
  * the `T` vector defines a translation.
- * 
+ *
  * ```
  * | Ix Jx Kx Tx |
  * | Iy Jy Ky Ty |
  * | Iz Jz Kz Tz |
  * | 0  0  0  1  |
  * ```
- * 
- * You can find out more about matrices from the great Essence of Linear Algebra series. 
+ *
+ * You can find out more about matrices from the great Essence of Linear Algebra series.
  * https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab
  */
 class Matrix4x4 extends Array {
@@ -672,18 +672,40 @@ class Matrix4x4 extends Array {
         m31, m32, m33, m34,
         m41, m42, m43, m44) {
         super(16);
-        this.setValues(
-            m11, m12, m13, m14,
-            m21, m22, m23, m24,
-            m31, m32, m33, m34,
-            m41, m42, m43, m44);
+        // NOTE(JULIAN): The implementation here is the inlined version of:
+        // this.setValues(
+        //     m11, m12, m13, m14,
+        //     m21, m22, m23, m24,
+        //     m31, m32, m33, m34,
+        //     m41, m42, m43, m44);
+        // because otherwise JSDoc thinks that all the indicies are `number|undefined`
+        // even though we know they are `number`.
+        this[0] = m11;
+        this[1] = m21;
+        this[2] = m31;
+        this[3] = m41;
+
+        this[4] = m12;
+        this[5] = m22;
+        this[6] = m32;
+        this[7] = m42;
+
+        this[8] = m13;
+        this[9] = m23;
+        this[10] = m33;
+        this[11] = m43;
+
+        this[12] = m14;
+        this[13] = m24;
+        this[14] = m34;
+        this[15] = m44;
     }
 
     /**
      * Creates a new matrix initialized with the
      * passed parameters.
      * Matrix will have the form:
-     * 
+     *
      * ```
      * | m11 m12 m13 m14 |
      * | m21 m22 m23 m24 |
@@ -691,22 +713,22 @@ class Matrix4x4 extends Array {
      * | m41 m42 m43 m44 |
      * ```
      *
-     * @param {number} m11 
-     * @param {number} m12 
-     * @param {number} m13 
-     * @param {number} m14 
-     * @param {number} m21 
-     * @param {number} m22 
-     * @param {number} m23 
-     * @param {number} m24 
-     * @param {number} m31 
-     * @param {number} m32 
-     * @param {number} m33 
-     * @param {number} m34 
-     * @param {number} m41 
-     * @param {number} m42 
-     * @param {number} m43 
-     * @param {number} m44 
+     * @param {number} m11
+     * @param {number} m12
+     * @param {number} m13
+     * @param {number} m14
+     * @param {number} m21
+     * @param {number} m22
+     * @param {number} m23
+     * @param {number} m24
+     * @param {number} m31
+     * @param {number} m32
+     * @param {number} m33
+     * @param {number} m34
+     * @param {number} m41
+     * @param {number} m42
+     * @param {number} m43
+     * @param {number} m44
      * @returns {Matrix4x4}
      */
     static create(
@@ -725,7 +747,7 @@ class Matrix4x4 extends Array {
      * Modifies every value of the matrix
      * to match the parameters passed in.
      * Matrix will have the form:
-     * 
+     *
      * ```
      * | m11 m12 m13 m14 |
      * | m21 m22 m23 m24 |
@@ -733,22 +755,22 @@ class Matrix4x4 extends Array {
      * | m41 m42 m43 m44 |
      * ```
      *
-     * @param {number} m11 
-     * @param {number} m12 
-     * @param {number} m13 
-     * @param {number} m14 
-     * @param {number} m21 
-     * @param {number} m22 
-     * @param {number} m23 
-     * @param {number} m24 
-     * @param {number} m31 
-     * @param {number} m32 
-     * @param {number} m33 
-     * @param {number} m34 
-     * @param {number} m41 
-     * @param {number} m42 
-     * @param {number} m43 
-     * @param {number} m44 
+     * @param {number} m11
+     * @param {number} m12
+     * @param {number} m13
+     * @param {number} m14
+     * @param {number} m21
+     * @param {number} m22
+     * @param {number} m23
+     * @param {number} m24
+     * @param {number} m31
+     * @param {number} m32
+     * @param {number} m33
+     * @param {number} m34
+     * @param {number} m41
+     * @param {number} m42
+     * @param {number} m43
+     * @param {number} m44
      * @returns {void}
      */
     setValues(
@@ -780,8 +802,8 @@ class Matrix4x4 extends Array {
     /**
      * Create a new identity matrix. When multiplying
      * the identity matrix with a vector, the result is the vector you started with.
-     * When multiplying identity matrix with another matrix, the result is the matrix you started with. 
-     * 
+     * When multiplying identity matrix with another matrix, the result is the matrix you started with.
+     *
      * The identity matrix looks like this:
      * ```
      * | 1 0 0 0 |
@@ -789,7 +811,7 @@ class Matrix4x4 extends Array {
      * | 0 0 1 0 |
      * | 0 0 0 1 |
      * ```
-     * 
+     *
      * @returns {Matrix4x4} - The identity matrix
      */
     static identity() {
@@ -815,7 +837,7 @@ class Matrix4x4 extends Array {
     /**
      * Returns a copy of `matrix`. If `out` is provided,
      * modifies it rather than creating a new matrix.
-     * @param {Matrix4x4} matrix 
+     * @param {Matrix4x4} matrix
      * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
      * @returns {Matrix4x4}
      */
@@ -846,8 +868,8 @@ class Matrix4x4 extends Array {
      * Returns the result of multiplying `a` and `b` together.
      * Note that the order in which you multiply matrices together changes the outcome.
      * If `out` is provided, modifies it rather than creating a new matrix.
-     * @param {Matrix4x4} a 
-     * @param {Matrix4x4} b 
+     * @param {Matrix4x4} a
+     * @param {Matrix4x4} b
      * @param {Matrix4x4} [out] - [OPTIONAL] modified if provided
      * @returns {Matrix4x4}
      */
@@ -872,7 +894,7 @@ class Matrix4x4 extends Array {
     /**
      * Returns the result of multiplying `this` with `matrix`, returning a new matrix.
      * Note that the order in which you multiply matrices together changes the outcome.
-     * @param {Matrix4x4} matrix 
+     * @param {Matrix4x4} matrix
      * @returns {Matrix4x4}
      */
     times(matrix) {
@@ -882,8 +904,8 @@ class Matrix4x4 extends Array {
     /**
      * Returns a new matrix where each element is the sum of the corrseponding
      * elements of `a` and `b`.
-     * @param {Matrix4x4} a 
-     * @param {Matrix4x4} b 
+     * @param {Matrix4x4} a
+     * @param {Matrix4x4} b
      * @returns {Matrix4x4}
      */
     static add(a, b) {
@@ -899,7 +921,7 @@ class Matrix4x4 extends Array {
     /**
      * Returns a new matrix where each element is the sum of the corrseponding
      * elements of `this` and `matrix`.
-     * @param {Matrix4x4} matrix 
+     * @param {Matrix4x4} matrix
      * @returns {Matrix4x4}
      */
     plus(matrix) {
@@ -910,7 +932,7 @@ class Matrix4x4 extends Array {
      * Returns a new matrix where each element is the difference of the corrseponding
      * elements of `a` and `b`.
      * @param {Matrix4x4} a
-     * @param {Matrix4x4} b 
+     * @param {Matrix4x4} b
      * @returns {Matrix4x4}
      */
     static subtract(a, b) {
@@ -926,7 +948,7 @@ class Matrix4x4 extends Array {
     /**
      * Returns a new matrix where each element is the difference of the corrseponding
      * elements of `this` and `matrix`.
-     * @param {Matrix4x4} matrix 
+     * @param {Matrix4x4} matrix
      * @returns {Matrix4x4}
      */
     minus(matrix) {
@@ -1027,7 +1049,7 @@ class Matrix4x4 extends Array {
     }
 
     /**
-     * Returns the matrix resulting from rotating 
+     * Returns the matrix resulting from rotating
      * `mat` by `radians` around the x axis.
      * If `out` is provided, overwrites it
      * rather than creating a new matrix.
@@ -1045,7 +1067,7 @@ class Matrix4x4 extends Array {
     }
 
     /**
-     * Returns the matrix resulting from rotating 
+     * Returns the matrix resulting from rotating
      * `mat` by `radians` around the y axis.
      * If `out` is provided, overwrites it
      * rather than creating a new matrix.
@@ -1063,7 +1085,7 @@ class Matrix4x4 extends Array {
     }
 
     /**
-     * Returns the matrix resulting from rotating 
+     * Returns the matrix resulting from rotating
      * `mat` by `radians` around the z axis.
      * If `out` is provided, overwrites it
      * rather than creating a new matrix.
@@ -1202,7 +1224,7 @@ class Bounds3D {
     /**
      * Returns a scale factor that, when used to scale points,
      * will guarantee that every point fits within a unit cube.
-     * 
+     *
      * This scale factor is equal to 1/maxAxisDist, where
      * maxAxisDist is the length of the axis-aligned line
      * that extends from the origin to an corner of the bounding box
@@ -1229,7 +1251,7 @@ class Space {
      * and dimensions `screenWidth` and `screenHeight`.
      * These coordinates exist in a space where 0,0 is the bottom left of the canvas
      * and 1,1 is the top right of the canvas.
-     * 
+     *
      * @param {CanvasRenderingContext2D} ctx - rendering canvas
      * @param {number} screenX
      * @param {number} screenY
@@ -1278,7 +1300,7 @@ class Space {
         if (!Space.removeListeners) {
             const canvas = ctx.canvas;
             /**
-             * @param {MouseEvent} mouseEvent 
+             * @param {MouseEvent} mouseEvent
              */
             const _onMouseMove = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
@@ -1288,7 +1310,7 @@ class Space {
             }
 
             /**
-             * @param {MouseEvent} mouseEvent 
+             * @param {MouseEvent} mouseEvent
              */
             const _onMouseClick = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
@@ -1297,14 +1319,14 @@ class Space {
             }
 
             /**
-             * @param {MouseEvent} mouseEvent 
+             * @param {MouseEvent} mouseEvent
              */
             const _onMouseDown = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
             }
 
             /**
-             * @param {MouseEvent} mouseEvent 
+             * @param {MouseEvent} mouseEvent
              */
             const _onMouseUp = (mouseEvent) => {
                 Space.__mouseButtons = mouseEvent.buttons;
@@ -1438,7 +1460,7 @@ class Space {
     /**
      * Draw a line between `pt1` and `pt2` in this space.
      * You may optionally change the default color and style when drawing.
-     * 
+     *
      * @example <caption>Draw line with default color and thickness:</caption>
      * space.line([1,1,1], [0,0,0]);
      * @example <caption>Changing the color to red:</caption>
@@ -1447,14 +1469,14 @@ class Space {
      * space.line([1,1,1], [0,0,0], { thickness: 2 });
      * @example <caption>Changing the color and thickness:</caption>
      * space.line([1,1,1], [0,0,0], { color: 0xFF0000FF, thickness: 2 });
-     * 
+     *
      * @param {iVector3} pt1 - coordinates of the first point
      * @param {iVector3} pt2 - coordinates of the first point
      *
      * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
      * @param {string|number} [style.color] - Color of the line ('white' by default)
      * @param {number} [style.thickness] - Thickness of the line (1 by default)
-     * 
+     *
      * @returns {void}
      */
     line(pt1, pt2, style = {}) {
@@ -1480,7 +1502,7 @@ class Space {
 
     /**
      * Draw 3d crosshairs.
-     * 
+     *
      * @param {iVector3} centerPt - Center of the crosshairs.
      * @param {number} radius - Radius of the crosshairs.
      * @param {Object} [style] - [Optional] style properties e.g. `{color: 'red', thickness: 2}`
@@ -1502,7 +1524,7 @@ class Space {
 
     /**
      * Draw 3d axes at the origin of the space.
-     * 
+     *
      * @param {number} radius - Radius of the crosshairs.
      * @param {Object} [style] - [Optional] style properties e.g. `{ fill: 'red', stroke: 'green', thickness: 2 }`
      * @param {string|number} [style.fill] - Color of the axis labels ('white' by default)
@@ -1525,7 +1547,7 @@ class Space {
 
     /**
      * Draw a rectangle in the xy plane.
-     * 
+     *
      * @param {iVector3} cornerPt - Corner of the rectangle.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
@@ -1550,7 +1572,7 @@ class Space {
 
     /**
      * Draw a rectangle in the yz plane.
-     * 
+     *
      * @param {iVector3} cornerPt - Corner of the rectangle.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
@@ -1575,7 +1597,7 @@ class Space {
 
     /**
      * Draw a rectangle in the xz plane.
-     * 
+     *
      * @param {iVector3} cornerPt - Corner of the rectangle.
      * @param {number} width - Width of the rectangle
      * @param {number} height - Height of the rectangle.
@@ -1600,7 +1622,7 @@ class Space {
 
     /**
      * Draw a polygon via the given points.
-     * 
+     *
      * @param {iVector3[]} points - Points of the polygon
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
      * @param {string|number|null} [style.fill] - Fill color of the polygon. `null` for no fill, which is the default.
@@ -1638,7 +1660,7 @@ class Space {
 
     /**
      * Draw a polyline between the given points.
-     * 
+     *
      * @param {iVector3[]} points - Points of the polyline
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
      * @param {string|number|null} [style.stroke] - Stroke color of the polyline. ('white' by default). `null` for no stroke.
@@ -1669,7 +1691,7 @@ class Space {
 
     /**
      * Draw a sphere.
-     * 
+     *
      * @param {iVector3} centerPt - Center of the sphere
      * @param {number} radius - Radius of the sphere
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red', stroke: 'green', thickness: 2}`
@@ -1703,12 +1725,12 @@ class Space {
 
     /**
      * Draw text
-     * 
+     *
      * @param {string} text - The text to display
      * @param {number} size - Font size
      * @param {iVector3} position - Position of the text
      * @param {Object} [style] - [Optional] style properties e.g. `{fill: 'red'}`
-     * @param {string|number} [style.fill] - Fill color of the text. 'white' by default.
+     * @param {string|number|null} [style.fill] - Fill color of the text. 'white' by default.
      * @returns {void}
      */
     text(text, size, position, style = {}) {
@@ -1733,7 +1755,7 @@ class Space {
     /**
      * Returns the width and height of the given
      * `text` with the specified font `size`.
-     * 
+     *
      * @param {string} text - The text to display
      * @param {number} size - Font size
      * @returns {[width: number, height: number]}
@@ -1762,7 +1784,7 @@ class Space {
      * Draw leds as spheres at the given positions using the values to drive the colors.
      * Note that we don't output the exact same color as is in the array; we try to account
      * for the fact that real LEDs have a non-linear response curve.
-     * 
+     *
      * @param {iVector3[]} positions - Positions of each LED
      * @param {Uint8ClampedArray} values - Each 3 values correspond to the R,G,B values of one LED. `values.length` must equal `3*positions.length`.
      * @param {number} [radii] - Radius of each LED
@@ -1850,9 +1872,9 @@ class Space {
      * Returns the mouse position relative to this space.
      * The mouse position will be unclamped so it won't be limited
      * to the edges of the space.
-     * 
+     *
      * If you do want the mouse to be clamped, use `getMousePosition` instead.
-     * 
+     *
      * Use the optional `depth` parameter to choose the
      * z-plane of the mouse prior to translating it into the
      * space's coordinate system.
@@ -1878,9 +1900,9 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} [depth] 
-     * @param {Vector3} [out] 
-     * @returns 
+     * @param {number} [depth]
+     * @param {Vector3} [out]
+     * @returns
      */
     getTopLeftPoint(depth = 0, out) {
         if (out === undefined) {
@@ -1900,9 +1922,9 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} [depth] 
-     * @param {Vector3} [out] 
-     * @returns 
+     * @param {number} [depth]
+     * @param {Vector3} [out]
+     * @returns
      */
     getTopRightPoint(depth = 0, out) {
         if (out === undefined) {
@@ -1922,9 +1944,9 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} [depth] 
-     * @param {Vector3} [out] 
-     * @returns 
+     * @param {number} [depth]
+     * @param {Vector3} [out]
+     * @returns
      */
     getBottomRightPoint(depth = 0, out) {
         if (out === undefined) {
@@ -1944,9 +1966,9 @@ class Space {
      * space's coordinate system.
      * Overwrites and returns `out` if provided; otherwise
      * returns a new vector as the result.
-     * @param {number} [depth] 
-     * @param {Vector3} [out] 
-     * @returns 
+     * @param {number} [depth]
+     * @param {Vector3} [out]
+     * @returns
      */
     getBottomLeftPoint(depth = 0, out) {
         if (out === undefined) {
@@ -1963,10 +1985,10 @@ class Space {
      * Returns the mouse position relative to this space.
      * The result will be clamped such that the mouse position
      * may not move outside the bounds of the space.
-     * 
+     *
      * Use `getMousePositionUnclamped` instead if you want to get
      * the mouse position in a space without any clamping.
-     * 
+     *
      * Use the optional `depth` parameter to choose the
      * z-plane of the mouse prior to translating it into the
      * space's coordinate system.
@@ -2087,7 +2109,7 @@ class UserInterface {
     UI_TEXT_SIZE = 10
 
     /**
-     * @private 
+     * @private
      * @type {Vector3} */
     __tempV3 = Vector3.zero();
 
@@ -2175,7 +2197,7 @@ class UserInterface {
         return (x - point[0]) * (x - point[0]) + (y - point[1]) * (y - point[1]) < radius * radius;
     }
 
-    /** 
+    /**
      * Draws an interactive button.
      * @param {string} label Text to display on the button
      * @param {number} x Left coordinate of the button in UI space
@@ -2203,7 +2225,7 @@ class UserInterface {
         return wentDown;
     }
 
-    /** 
+    /**
      * Draws an interactive circular button.
      * @param {string} label Text to display on the button
      * @param {number} x Center x coordinate of the button in UI space
@@ -2231,7 +2253,7 @@ class UserInterface {
         return wentDown;
     }
 
-    /** 
+    /**
      * Draws an interactive button that has an active/inactive state.
      * @param {string} label Text to display on the button
      * @param {boolean} isActive Should the button appear "active" even if not hovered?
@@ -2272,7 +2294,7 @@ class UserInterface {
         space.rectXY(this.__tempV3, width, height, style);
     }
 
-    /** 
+    /**
      * Draws a text label.
      * @param {string} text Text to display on the button
      * @param {number} x Left coordinate of the label in UI space
@@ -2356,7 +2378,7 @@ class UserInterface {
         return newState;
     }
 
-    /** 
+    /**
      * Must be called exactly once at the end of the frame.
      * @returns {void}
      */
@@ -2368,9 +2390,9 @@ class UserInterface {
 /**
  * A class that represents a view on the screen with a specific location
  * and a user interface.
- * 
+ *
  * The space has coordinates you specify in the constructor.
- * 
+ *
  * You can access the user interface with `.ui`.
  * Its dimensions range from 0-100. 0,0 is at the bottom.
  */
@@ -2381,9 +2403,9 @@ class View extends Space {
      * and dimensions `screenWidth` and `screenHeight`.
      * These coordinates exist in a space where 0,0 is the bottom left of the canvas
      * and 1,1 is the top right of the canvas.
-     * 
+     *
      * Each view has a user interface that you can access via `.ui`.
-     * 
+     *
      * @param {CanvasRenderingContext2D} ctx - rendering canvas
      * @param {number} screenX
      * @param {number} screenY
@@ -2430,7 +2452,7 @@ class View extends Space {
  * Given some data points, returns a new `Vector3` array
  * containing corresponding points uniformly scaled by
  * the given scale factor.
- * 
+ *
  * @param {iVector3[]} dataPoints
  * @param {number} scaleFactor
  * @returns {Vector3[]}
@@ -2449,7 +2471,7 @@ function mapPointsToScaledPoints(dataPoints, scaleFactor) {
  * Given some data points, returns a new `Vector3` array
  * containing corresponding points translated by the
  * `translation` vector.
- * 
+ *
  * @param {iVector3[]} dataPoints
  * @param {iVector3} translation
  * @returns {Vector3[]}
@@ -2465,7 +2487,7 @@ function mapPointsToTranslatedPoints(dataPoints, translation) {
 }
 
 /**
- * Given some data points that are of the form [x,y,z], 
+ * Given some data points that are of the form [x,y,z],
  * returns a new array of Vector3s with corresponding values.
  * @param {iVector3[]} dataPoints
  * @returns {Vector3[]}
@@ -2503,7 +2525,7 @@ function interpBetweenPoints(points, t, out) {
 
 class Spaces {
     /**
-     * @param {CanvasRenderingContext2D} ctx 
+     * @param {CanvasRenderingContext2D} ctx
      */
     constructor(ctx) {
         this.Front = new View(ctx, 0, .5, 0.5, 0.5, -1, 1);
@@ -2583,7 +2605,7 @@ class State {
     deviceState = { status: 'Scanning', found: [] };
 
     /**
-     * Creates a new `State` object. 
+     * Creates a new `State` object.
      * Pass in an object literal for `savedDefaults` to
      * make those values be the default values for properties that will
      * be saved every time the server reports that a file has changed
@@ -2615,7 +2637,7 @@ class State {
         this.dataWs.onclose = (evt) => {
             console.warn(`
             [Data] Closed websocket. Will no longer send actuator data to server.
-            
+
             You likely stopped the server or opened a new browser tab (only one can send data at a time).
             If you didn't expect this, make sure the server is running and refresh the page.
             `);
@@ -2662,7 +2684,7 @@ class State {
     /**
      * Send the passed data to the server, which will pass it
      * on to the microcontroller if there is a connected microcontroller.
-     * 
+     *
      * @param {Uint8ClampedArray} data
      */
     trySendToMicrocontroller(data) {
@@ -2676,15 +2698,14 @@ State.STORAGE_KEY = 'InstallationState';
 
 /**
  * Start the main animation loop
- * @param {number} msPerFrame 
- * @param {State} state 
+ * @param {number} msPerFrame
+ * @param {State} state
  */
 function beginMainLoop(msPerFrame, state) {
     const mappings = new Mappings(state);
     /** @type {HTMLCanvasElement} */
-    const canvas = (/** @type {HTMLCanvasElement} */document.getElementById('visualization'));
-    /** @type {CanvasRenderingContext2D} */
-    const ctx = canvas.getContext('2d');
+    const canvas = /** @type {HTMLCanvasElement} */(document.getElementById('visualization'));
+    const ctx = /** @type {CanvasRenderingContext2D} */(canvas.getContext('2d'));
     Space.autoResize(ctx);
     const spaces = new Spaces(ctx);
     let lastMsTs = performance.now();
@@ -2783,7 +2804,7 @@ class Mappings {
 
     /**
      * Parses the given json file from the 'server/front/mappings' directory and returns the JSON data.
-     * @param {string} jsonFileName 
+     * @param {string} jsonFileName
      * @returns {Promise<Object>}
      */
     readMapping(jsonFileName) {
@@ -2824,36 +2845,36 @@ beginMainLoop(/* msPerFrame */1000 / 60, $state);
  * Animation loop function. Called approximately at the update rate.
  * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
  * @param {number} dtMs Number of milliseconds elapsed since last frame
- * @param {Spaces} spaces 
- * @param {Mappings} mappings 
+ * @param {Spaces} spaces
+ * @param {Mappings} mappings
  */
 function loop(elapsedMs, dtMs, spaces, mappings) {
     const { Front, Perspective, Top, GUI } = spaces;
-    /** 
+    /**
      * Data that encodes the color of each LED. Every 3 entries in the array correspond to the R,G,B values of one LED.
-     * 
+     *
      * ```
      * Index:    0 1 2   3 4 5   6 7 8  ...
      * Channel:  R,G,B,  R,G,B,  R,G,B  ...
      * LED:        0       1       2    ...
      * ```
-     * 
+     *
      * - `$ledData[0]` corresponds to the Red channel of LED 0
      * - `$ledData[1]` corresponds to the Green channel of LED 0
      * - `$ledData[2]` corresponds to the Blue channel of LED 0
      * - `$ledData[3]` corresponds to the Red channel of the LED 1
      * - etc...
-     * 
-     * 
-     * - To change the Red channel of the `n`th LED, use 
+     *
+     *
+     * - To change the Red channel of the `n`th LED, use
      * ```
      * $ledData[n*3 + 0]
      * ```
-     * - To change the Green channel of the `n`th LED, use 
+     * - To change the Green channel of the `n`th LED, use
      * ```
      * $ledData[n*3 + 1]
      * ```
-     * - To change the Blue channel of the `n`th LED, use 
+     * - To change the Blue channel of the `n`th LED, use
      * ```
      * $ledData[n*3 + 2]
      * ```
@@ -2932,7 +2953,7 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
 
     // $saved.anim.show = false;
     if ($saved.anim.show) {
-        //Anim1: Vertical line passing across the screen 
+        //Anim1: Vertical line passing across the screen
         if ($saved.animState == 0) {
             exampleAnim1(elapsedMs, dtMs, spaces, mappings);
         }
@@ -2942,7 +2963,7 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
             exampleAnim2(elapsedMs, dtMs, spaces, mappings);
         }
 
-        //Anim3: Circle expanding 
+        //Anim3: Circle expanding
         if ($saved.animState == 2) {
             exampleAnim3(elapsedMs, dtMs, spaces, mappings);
         }
@@ -2975,8 +2996,8 @@ function loop(elapsedMs, dtMs, spaces, mappings) {
  * Example animation loop function. Called approximately at the update rate.
  * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
  * @param {number} dtMs Number of milliseconds elapsed since last frame
- * @param {Spaces} spaces 
- * @param {Mappings} mappings 
+ * @param {Spaces} spaces
+ * @param {Mappings} mappings
  */
 function exampleAnim1(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mappings) {
     const $ledData = $state.ledData;
@@ -3002,8 +3023,8 @@ function exampleAnim1(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
  * Example animation loop function. Called approximately at the update rate.
  * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
  * @param {number} dtMs Number of milliseconds elapsed since last frame
- * @param {Spaces} spaces 
- * @param {Mappings} mappings 
+ * @param {Spaces} spaces
+ * @param {Mappings} mappings
  */
 function exampleAnim2(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mappings) {
     const $ledData = $state.ledData;
@@ -3036,8 +3057,8 @@ function exampleAnim2(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mapping
  * Example animation loop function. Called approximately at the update rate.
  * @param {number} elapsedMs Number of milliseconds elapsed since beginning of the program
  * @param {number} dtMs Number of milliseconds elapsed since last frame
- * @param {Spaces} spaces 
- * @param {Mappings} mappings 
+ * @param {Spaces} spaces
+ * @param {Mappings} mappings
  */
 function exampleAnim3(elapsedMs, dtMs, { Front, Perspective, Top, GUI }, mappings) {
     const $ledData = $state.ledData;
