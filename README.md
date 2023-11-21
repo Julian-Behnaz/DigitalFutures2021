@@ -1,6 +1,6 @@
 # Guide
 
-[Beyond the Grid: Interactive Installations with Wacky Topologies](https://www.digitalfutures.world/workshops/105.html)
+[Beyond the Grid: Interactive Installations with Wacky Topologies](https://www.digitalfutures.world/workshops/history/view?workshops=105&cid=32&year=2021)
 
 Drawings and diagrams may be found [here](https://miro.com/app/board/o9J_l9vyjsE=/)
 
